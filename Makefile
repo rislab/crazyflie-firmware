@@ -149,6 +149,7 @@ PROJ_OBJ += position_estimator_altitude.o position_controller_pid.o
 PROJ_OBJ += estimator.o estimator_complementary.o
 PROJ_OBJ += controller_$(CONTROLLER).o
 PROJ_OBJ += power_distribution_$(POWER_DISTRIBUTION).o
+PROJ_OBJ += fm.o
 PROJ_OBJ_CF2 += estimator_kalman.o
 
 
@@ -168,6 +169,8 @@ PROJ_OBJ_CF2 += ledring12.o
 PROJ_OBJ_CF2 += buzzdeck.o
 PROJ_OBJ_CF2 += gtgps.o
 PROJ_OBJ_CF2 += cppmdeck.o
+PROJ_OBJ_CF2 += lipogauge.o
+PROJ_OBJ_CF2 += currentsensor.o
 PROJ_OBJ_CF2 += usddeck.o
 PROJ_OBJ_CF2 += vl53l0x.o
 PROJ_OBJ_CF2 += locodeck.o

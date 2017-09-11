@@ -15,5 +15,6 @@ tags
 /cf2.*
 /cf1.*
 *.gch
+*.swp
 
 /generated-test/**

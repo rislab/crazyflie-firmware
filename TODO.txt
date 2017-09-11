@@ -1,0 +1,1 @@
+- Use new i2c code from Bitcraze for lipo gauge.  Current (older) implementation prone to crashing.

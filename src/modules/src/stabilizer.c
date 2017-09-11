@@ -40,6 +40,7 @@
 #include "sitaw.h"
 #include "controller.h"
 #include "power_distribution.h"
+#include "fm.h"
 
 #include "estimator_kalman.h"
 #include "estimator.h"
@@ -69,6 +70,7 @@ void stabilizerInit(StateEstimatorType estimator)
   {
     sitAwInit();
   }
+  FMInit(); // BB_change
 
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
@@ -84,6 +86,7 @@ bool stabilizerTest(void)
   pass &= stateEstimatorTest();
   pass &= stateControllerTest();
   pass &= powerDistributionTest();
+  pass &= FMTest();
 
   return pass;
 }

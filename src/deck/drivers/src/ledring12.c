@@ -562,6 +562,223 @@ static void siren(uint8_t buffer[][3], bool reset)
   if (++tic >= 20) tic = 0;
 }
 
+static void packetRate(uint8_t buffer[][3], bool reset)
+{
+  int i;
+  static int varid;
+  uint32_t packetsPerSecond;
+  static int pmstateid;
+  int8_t pmstate;
+  static int tic = 0;
+  static bool batteryEverLow = false;
+
+  // varid = logGetVarId("crtp", "pps");
+  varid = logGetVarId("vicon", "dt");
+  packetsPerSecond = logGetUint(varid);
+  if (packetsPerSecond > 30) packetsPerSecond = 30;
+
+  pmstateid = logGetVarId("pm", "state");
+  pmstate = logGetInt(pmstateid);
+  if (pmstate == lowPower) {
+    batteryEverLow = true;
+  }
+
+  for (i = 0; i < NBR_LEDS; i++) {
+    if (batteryEverLow && tic < 10) {
+      buffer[i][0] = 0;
+      buffer[i][1] = 0;
+      buffer[i][2] = 0;
+    } else {
+      // buffer[i][0] = LIMIT(LINSCALE(0, 100, 100, 0, packetsPerSecond)); // Red (low packets per second)
+      // buffer[i][1] = LIMIT(LINSCALE(0, 100, 0, 100, packetsPerSecond)); // Green (high packets per second)
+      buffer[i][0] = LIMIT(LINSCALE(0, 30, 0, 100, packetsPerSecond)); // Red (low packets per second)
+      buffer[i][1] = LIMIT(LINSCALE(0, 30, 100, 0, packetsPerSecond)); // Green (high packets per second)
+
+      buffer[i][2] = 0;
+    }
+  }
+
+  if (++tic >= 20) tic = 0;
+}
+
+// Group Effect
+static uint8_t group_red = 0, group_green = 0, group_blue = 0, prev_group = 0;
+static void groupEffect(uint8_t buffer[][3], bool reset)
+{
+  int i;
+  static int group_id_var;
+  uint8_t group_id_led;
+  static int pmstateid;
+  int8_t pmstate;
+  static int tic = 0;
+  static bool batteryEverLow = false;
+
+  group_id_var = logGetVarId("fm_group", "led");
+  /*group_id_var = logGetVarId("setpointGroup", "led");*/
+  group_id_led = logGetUint(group_id_var);
+
+  pmstateid = logGetVarId("pm", "state");
+  pmstate = logGetInt(pmstateid);
+  if (pmstate == lowPower) {
+    batteryEverLow = true;
+  }
+  if(reset) {
+    batteryEverLow = false;
+  }
+
+  if (prev_group != group_id_led){
+    switch (group_id_led){
+      case 1: // Red
+        group_red = 50;
+        group_green = 0;
+        group_blue = 0;
+        break;
+
+      case 2: // Green
+        group_red = 0;
+        group_green = 50;
+        group_blue = 0;
+        break;
+
+      case 3: // Blue
+        group_red = 0;
+        group_green = 0;
+        group_blue = 50;
+        break;
+
+      case 4: // Yellow
+        group_red = 25;
+        group_green = 25;
+        group_blue = 0;
+        break;
+
+      case 5: // Purple
+        group_red = 25;
+        group_green = 0;
+        group_blue = 25;
+        break;
+
+      case 6: // Teal
+        group_red = 0;
+        group_green = 25;
+        group_blue = 25;
+        break;
+
+      case 7: // Thistle
+        group_red = 17;
+        group_green = 16;
+        group_blue = 17;
+        break;
+
+      case 8: // Salmon
+        group_red = 25;
+        group_green = 13;
+        group_blue = 12;
+        break;
+
+      case 9: // Orange
+        group_red = 32;
+        group_green = 18;
+        group_blue = 0;
+        break;
+
+      case 10: // Brown
+        group_red = 25;
+        group_green = 17;
+        group_blue = 8;
+        break;
+
+      case 11: // Forest Green
+        group_red = 8;
+        group_green = 34;
+        group_blue = 8;
+        break;
+
+      case 12: // Slate Blue
+        group_red = 13;
+        group_green = 11;
+        group_blue = 26;
+        break;
+
+      case 13: // Khaki
+        group_red = 20;
+        group_green = 19;
+        group_blue = 11;
+        break;
+
+      case 14: // White
+        group_red = 17;
+        group_green = 17;
+        group_blue = 17;
+        break;
+
+      case 15: // Green-Yellow
+        group_red = 18;
+        group_green = 27;
+        group_blue = 5;
+        break;
+
+      case 16: // Hot Pink
+        group_red = 23;
+        group_green = 10;
+        group_blue = 17;
+        break;
+
+      case 17: //
+        group_red = 22;
+        group_green = 20;
+        group_blue = 8;
+        break;
+
+      case 18: //
+        group_red = 5;
+        group_green = 17;
+        group_blue = 28;
+        break;
+
+      case 19: //
+        group_red = 8;
+        group_green = 26;
+        group_blue = 16;
+        break;
+
+      case 20: //
+        group_red = 25;
+        group_green = 7;
+        group_blue = 18;
+        break;
+
+      default:  // Off
+        group_red = 0;
+        group_green = 0;
+        group_blue = 0;
+    }
+    for (i=0; i<NBR_LEDS; i++){
+
+      buffer[i][0] = group_red;
+      buffer[i][1] = group_green;
+      buffer[i][2] = group_blue;
+    }
+    prev_group = group_id_led;
+  }
+
+  if (batteryEverLow){
+    for (i=0; i<NBR_LEDS; i++){
+      if (tic < 10){
+        buffer[i][0] = 0;
+        buffer[i][1] = 0;
+        buffer[i][2] = 0;
+      }
+      else{
+        buffer[i][0] = group_red;
+        buffer[i][1] = group_green;
+        buffer[i][2] = group_blue;
+      }
+    }
+    if (++tic >= 20) tic = 0;
+  }
+}
+
 /**************** Effect list ***************/
 
 
@@ -581,6 +798,8 @@ Ledring12Effect effectsFct[] =
   siren,
   gravityLight,
   virtualMemEffect,
+  packetRate,
+  groupEffect,
 }; //TODO Add more
 
 /********** Ring init and switching **********/
@@ -593,6 +812,10 @@ void ledring12Worker(void * data)
   static int current_effect = 0;
   static uint8_t buffer[NBR_LEDS][3];
   bool reset = true;
+  bool charge = false;
+  static int pmstateid;
+
+  int8_t pmstate;
 
   if (/*!pmIsDischarging() ||*/ (effect > neffect)) {
     ws2812Send(black, NBR_LEDS);
@@ -606,7 +829,20 @@ void ledring12Worker(void * data)
   }
   current_effect = effect;
 
-  effectsFct[current_effect](buffer, reset);
+  pmstateid = logGetVarId("pm", "state");
+  pmstate = logGetInt(pmstateid);
+  if (pmstate == charging && charge == false){
+    effectsFct[0](buffer, true);
+    charge = true;
+  }else if (pmstate == charging && charge == true){
+    effectsFct[0](buffer, false);
+  }else if (pmstate != charging && charge == true){
+    charge = false;
+    effectsFct[current_effect](buffer, true);
+  }else{
+    effectsFct[current_effect](buffer, reset);
+  }
+
   ws2812Send(buffer, NBR_LEDS);
 }
 
