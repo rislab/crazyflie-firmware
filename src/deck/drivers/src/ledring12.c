@@ -80,7 +80,7 @@ typedef void (*Ledring12Effect)(uint8_t buffer[][3], bool reset);
 #define LINSCALE(domain_low, domain_high, codomain_low, codomain_high, value) ((codomain_high - codomain_low) / (domain_high - domain_low)) * (value - domain_low) + codomain_low
 #define SET_WHITE(dest, intensity) dest[0] = intensity; dest[1] = intensity; dest[2] = intensity;
 
-static uint32_t effect = 6;
+static uint32_t effect = 15;
 static uint32_t neffect;
 static uint8_t headlightEnable = 0;
 static uint8_t black[][3] = {BLACK, BLACK, BLACK,
@@ -157,7 +157,7 @@ static void whiteSpinEffect(uint8_t buffer[][3], bool reset)
   COPY_COLOR(buffer[(NBR_LEDS-1)], temp);
 }
 
-static uint8_t solidRed=20, solidGreen=20, solidBlue=20;
+static uint8_t solidRed=0, solidGreen=0, solidBlue=0;
 static float glowstep = 0.05;
 static void solidColorEffect(uint8_t buffer[][3], bool reset)
 {
