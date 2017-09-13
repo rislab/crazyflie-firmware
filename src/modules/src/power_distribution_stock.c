@@ -71,6 +71,29 @@ void powerStop()
   motorsSetRatio(MOTOR_M4, 0);
 }
 
+void powerDistributionRPM(float m1, float m2, float m3, float m4)
+{
+  motorPower.m1 = limitThrust(m1);
+  motorPower.m2 = limitThrust(m2);
+  motorPower.m3 = limitThrust(m3);
+  motorPower.m4 = limitThrust(m4);
+
+  //if (motorSetEnable)
+  //{
+  //  motorsSetRatio(MOTOR_M1, motorPowerSet.m1);
+  //  motorsSetRatio(MOTOR_M2, motorPowerSet.m2);
+  //  motorsSetRatio(MOTOR_M3, motorPowerSet.m3);
+  //  motorsSetRatio(MOTOR_M4, motorPowerSet.m4);
+  //}
+  //else
+  //{
+  //  motorsSetRatio(MOTOR_M1, motorPower.m1);
+  //  motorsSetRatio(MOTOR_M2, motorPower.m2);
+  //  motorsSetRatio(MOTOR_M3, motorPower.m3);
+  //  motorsSetRatio(MOTOR_M4, motorPower.m4);
+  //}
+}
+
 void powerDistribution(const control_t *control)
 {
   #ifdef QUAD_FORMATION_X
@@ -113,7 +136,7 @@ PARAM_ADD(PARAM_UINT16, m1, &motorPowerSet.m1)
 PARAM_ADD(PARAM_UINT16, m2, &motorPowerSet.m2)
 PARAM_ADD(PARAM_UINT16, m3, &motorPowerSet.m3)
 PARAM_ADD(PARAM_UINT16, m4, &motorPowerSet.m4)
-PARAM_GROUP_STOP(ring)
+PARAM_GROUP_STOP(motorPowerSet)
 
 LOG_GROUP_START(motor)
 LOG_ADD(LOG_INT32, m4, &motorPower.m4)

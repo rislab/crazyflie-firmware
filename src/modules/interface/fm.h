@@ -41,5 +41,6 @@ struct FMCrtpValues {
 
 void FMInit(void);
 bool FMTest(void);
+void getRPMs(float* m1, float* m2, float* m3, float* m4);
 
 #endif /* FM_H_ */

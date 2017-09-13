@@ -56,10 +56,15 @@ static bool registerRequiredEstimator(StateEstimatorType estimator);
 #define DECK_FORCE
 #endif
 
+#ifndef DECK_FORCE2
+#define DECK_FORCE2
+#endif
+
 #define xstr(s) str(s)
 #define str(s) #s
 
 static char* deck_force = xstr(DECK_FORCE);
+static char* deck_force2 = xstr(DECK_FORCE2);
 
 void deckInfoInit()
 {
@@ -225,6 +230,21 @@ static void enumerateDecks(void)
         nDecks++;
         deckInfos[nDecks - 1].driver = driver;
         DEBUG_PRINT("compile-time forced driver %s added\n", deck_force);
+      } else {
+        DEBUG_PRINT("WARNING: No room for compile-time forced driver\n");
+      }
+    }
+  }
+  if (strlen(deck_force2) > 0) {
+    const DeckDriver *driver = deckFindDriverByName(deck_force2);
+    if (!driver) {
+      DEBUG_PRINT("WARNING: compile-time forced driver %s not found\n", deck_force2);
+    } else if (driver->init) {
+      if (nDecks <= DECK_MAX_COUNT)
+      {
+        nDecks++;
+        deckInfos[nDecks - 1].driver = driver;
+        DEBUG_PRINT("compile-time forced driver %s added\n", deck_force2);
       } else {
         DEBUG_PRINT("WARNING: No room for compile-time forced driver\n");
       }
