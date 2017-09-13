@@ -62,14 +62,14 @@ void stabilizerInit(StateEstimatorType estimator)
   if(isInit)
     return;
 
-  //sensorsInit();
-  //stateEstimatorInit(estimator);
-  //stateControllerInit();
-  //powerDistributionInit();
-  //if (estimator == kalmanEstimator)
-  //{
-  //  sitAwInit();
-  //}
+  sensorsInit();
+  stateEstimatorInit(estimator);
+  stateControllerInit();
+  powerDistributionInit();
+  if (estimator == kalmanEstimator)
+  {
+    sitAwInit();
+  }
   FMInit(); // BB_change
 
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
@@ -82,10 +82,10 @@ bool stabilizerTest(void)
 {
   bool pass = true;
 
-  //pass &= sensorsTest();
-  //pass &= stateEstimatorTest();
-  //pass &= stateControllerTest();
-  //pass &= powerDistributionTest();
+  pass &= sensorsTest();
+  pass &= stateEstimatorTest();
+  pass &= stateControllerTest();
+  pass &= powerDistributionTest();
   pass &= FMTest();
 
   return pass;
@@ -128,8 +128,8 @@ static void stabilizerTask(void* param)
   while(1) {
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
 
-    getExtPosition(&state);
-    stateEstimator(&state, &sensorData, &control, tick);
+    //getExtPosition(&state);
+    //stateEstimator(&state, &sensorData, &control, tick);
 
     //commanderGetSetpoint(&setpoint, &state);
 
