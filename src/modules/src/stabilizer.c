@@ -40,7 +40,7 @@
 #include "sitaw.h"
 #include "controller.h"
 #include "power_distribution.h"
-#include "fm.h"
+//#include "cascaded_cmd.h"
 
 #include "estimator_kalman.h"
 #include "estimator.h"
@@ -70,7 +70,7 @@ void stabilizerInit(StateEstimatorType estimator)
   {
     sitAwInit();
   }
-  FMInit(); // BB_change
+  //CascadedCmdInit();
 
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
@@ -86,7 +86,7 @@ bool stabilizerTest(void)
   pass &= stateEstimatorTest();
   pass &= stateControllerTest();
   pass &= powerDistributionTest();
-  pass &= FMTest();
+  //pass &= CascadedCmdTest();
 
   return pass;
 }
@@ -124,7 +124,6 @@ static void stabilizerTask(void* param)
   // Initialize tick to something else then 0
   tick = 1;
 
-  float m1, m2, m3, m4;
   while(1) {
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
 
@@ -136,15 +135,15 @@ static void stabilizerTask(void* param)
     //sitAwUpdateSetpoint(&setpoint, &sensorData, &state);
 
     //stateController(&control, &setpoint, &sensorData, &state, tick);
-    getRPMs(&m1, &m2, &m3, &m4);
+
+    //CascadedCmdControl(&control, &sensorData, &state);
 
     checkEmergencyStopTimeout();
 
     if (emergencyStop) {
       powerStop();
     } else {
-      //powerDistribution(&control);
-      powerDistributionRPM(m1, m2, m3, m4);
+      powerDistribution(&control);
     }
 
     tick++;

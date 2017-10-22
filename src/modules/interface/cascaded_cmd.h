@@ -23,24 +23,33 @@
  *
  */
 
-#ifndef FM_H_
-#define FM_H_
+#ifndef CASCADED_CMD_H_
+#define CASCADED_CMD_H_
 #include <stdint.h>
 #include <stdbool.h>
+#include "stabilizer_types.h"
 
 /**
- * CRTP FM data struct
+ * CRTP CASCADED_CMD data struct
  */
-struct FMCrtpValues {
+struct CCCrtpValues {
   uint8_t group;
-  int16_t F;
-  int16_t Mx;
-  int16_t My;
-  int16_t Mz;
+  int16_t qdes_x;
+  int16_t qdes_y;
+  int16_t qdes_z;
+  int16_t qdes_w;
+  int16_t omg_des_x;
+  int16_t omg_des_y;
+  int16_t omg_des_z;
+  int16_t omg_ddes_x;
+  int16_t omg_ddes_y;
+  int16_t omg_ddes_z;
+  int16_t thrust_des;
 } __attribute__((packed));
 
-void FMInit(void);
-bool FMTest(void);
-void getRPMs(float* m1, float* m2, float* m3, float* m4);
+void CascadedCmdInit(void);
+bool CascadedCmdTest(void);
+// void getRPMs(float* m1, float* m2, float* m3, float* m4);
+void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t *state);
 
-#endif /* FM_H_ */
+#endif /* CASCADED_CMD_H_ */

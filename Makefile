@@ -149,7 +149,7 @@ PROJ_OBJ += position_estimator_altitude.o position_controller_pid.o
 PROJ_OBJ += estimator.o estimator_complementary.o
 PROJ_OBJ += controller_$(CONTROLLER).o
 PROJ_OBJ += power_distribution_$(POWER_DISTRIBUTION).o
-PROJ_OBJ += fm.o
+PROJ_OBJ += cascaded_cmd.o
 PROJ_OBJ_CF2 += estimator_kalman.o
 
 
