@@ -40,12 +40,12 @@
 #include "sitaw.h"
 #include "controller.h"
 #include "power_distribution.h"
-//#include "cascaded_cmd.h"
+#include "cascaded_cmd.h"
 
 #include "estimator_kalman.h"
 #include "estimator.h"
 
-static bool isInit;
+static bool isInit = false;
 static bool emergencyStop = false;
 static int emergencyStopTimeout = EMERGENCY_STOP_TIMEOUT_DISABLED;
 
@@ -70,7 +70,7 @@ void stabilizerInit(StateEstimatorType estimator)
   {
     sitAwInit();
   }
-  //CascadedCmdInit();
+  CascadedCmdInit();
 
   xTaskCreate(stabilizerTask, STABILIZER_TASK_NAME,
               STABILIZER_TASK_STACKSIZE, NULL, STABILIZER_TASK_PRI, NULL);
@@ -86,7 +86,7 @@ bool stabilizerTest(void)
   pass &= stateEstimatorTest();
   pass &= stateControllerTest();
   pass &= powerDistributionTest();
-  //pass &= CascadedCmdTest();
+  pass &= CascadedCmdTest();
 
   return pass;
 }
@@ -128,7 +128,7 @@ static void stabilizerTask(void* param)
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
 
     //getExtPosition(&state);
-    //stateEstimator(&state, &sensorData, &control, tick);
+    stateEstimator(&state, &sensorData, &control, tick);
 
     //commanderGetSetpoint(&setpoint, &state);
 
@@ -136,11 +136,12 @@ static void stabilizerTask(void* param)
 
     //stateController(&control, &setpoint, &sensorData, &state, tick);
 
-    //CascadedCmdControl(&control, &sensorData, &state);
+    CascadedCmdControl(&control, &sensorData, &state);
 
     checkEmergencyStopTimeout();
 
-    if (emergencyStop) {
+    bool upsideDown = sensorData.acc.z < -0.5f;
+    if (emergencyStop || control.thrust <= 0.0f || upsideDown) {
       powerStop();
     } else {
       powerDistribution(&control);
@@ -176,7 +177,6 @@ LOG_GROUP_START(stabilizer)
 LOG_ADD(LOG_FLOAT, roll, &state.attitude.roll)
 LOG_ADD(LOG_FLOAT, pitch, &state.attitude.pitch)
 LOG_ADD(LOG_FLOAT, yaw, &state.attitude.yaw)
-LOG_ADD(LOG_UINT16, thrust, &control.thrust)
 LOG_GROUP_STOP(stabilizer)
 
 LOG_GROUP_START(acc)
@@ -220,7 +220,10 @@ LOG_ADD(LOG_FLOAT, z, &sensorData.mag.z)
 LOG_GROUP_STOP(mag)
 
 LOG_GROUP_START(controller)
-LOG_ADD(LOG_INT16, ctr_yaw, &control.yaw)
+LOG_ADD(LOG_FLOAT, thrust, &control.thrust)
+LOG_ADD(LOG_INT16, roll, &control.roll)
+LOG_ADD(LOG_INT16, pitch, &control.pitch)
+LOG_ADD(LOG_INT16, yaw, &control.yaw)
 LOG_GROUP_STOP(controller)
 
 LOG_GROUP_START(stateEstimate)

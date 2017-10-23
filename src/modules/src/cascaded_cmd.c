@@ -36,7 +36,7 @@
 #include "log.h"
 #include "param.h"
 #include "cascaded_cmd.h"
-#include <math.h>
+#include "math.h"
 //#include "math3d.h"
 
 
@@ -124,17 +124,17 @@ static void CCCrtpCB(CRTPPacket* pk)
 
   group_id = d->group;
 
-  qdes[0] = d->qdes_x;
-  qdes[1] = d->qdes_y;
-  qdes[2] = d->qdes_z;
-  qdes[3] = d->qdes_w;
-  omg_des[0] = d->omg_des_x;
-  omg_des[1] = d->omg_des_y;
-  omg_des[2] = d->omg_des_z;
-  omg_ddes[0] = d->omg_ddes_x;
-  omg_ddes[1] = d->omg_ddes_y;
-  omg_ddes[2] = d->omg_ddes_z;
-  thrust_des = d->thrust_des;
+  qdes[0] = d->qdes_x/1000.0f;
+  qdes[1] = d->qdes_y/1000.0f;
+  qdes[2] = d->qdes_z/1000.0f;
+  qdes[3] = d->qdes_w/1000.0f;
+  omg_des[0] = d->omg_des_x/1000.0f;
+  omg_des[1] = d->omg_des_y/1000.0f;
+  omg_des[2] = d->omg_des_z/1000.0f;
+  omg_ddes[0] = d->omg_ddes_x/1000.0f;
+  omg_ddes[1] = d->omg_ddes_y/1000.0f;
+  omg_ddes[2] = d->omg_ddes_z/1000.0f;
+  thrust_des = d->thrust_des/1000.0f;
 }
 
 /*
@@ -161,38 +161,6 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   // and then grab the x,y,z portion of qError
   //////////////////////////////////////////////
 
-  // get our current (quaternion) attitude
-  float qAx = state->attitudeQuaternion.x;
-  float qAy = state->attitudeQuaternion.y;
-  float qAz = state->attitudeQuaternion.z;
-  float qAw = state->attitudeQuaternion.w;
-
-  // skew qA into a 4x4 matrix
-  float qA_skew[4][4];
-  // qA_skew(qA(0), -qA(1), -qA(2), -qA(3),
-  //         qA(1),  qA(0),  qA(3), -qA(2),
-  //         qA(2), -qA(3),  qA(0),  qA(1),
-  //         qA(3),  qA(2), -qA(1),  qA(0));
-  qA_skew[0][0] =  qAw;
-  qA_skew[0][1] = -qAx;
-  qA_skew[0][2] = -qAy;
-  qA_skew[0][3] = -qAz;
-
-  qA_skew[1][0] =  qAx;
-  qA_skew[1][1] =  qAw;
-  qA_skew[1][2] =  qAz;
-  qA_skew[1][3] = -qAy;
-
-  qA_skew[2][0] =  qAy;
-  qA_skew[2][1] = -qAz;
-  qA_skew[2][2] =  qAw;
-  qA_skew[2][3] =  qAx;
-
-  qA_skew[3][0] =  qAz;
-  qA_skew[3][1] =  qAy;
-  qA_skew[3][2] = -qAx;
-  qA_skew[3][3] =  qAw;
-
   // calculate the inverse of our desired (quaternion) attitude
   float qn = 1/sqrtf(qdes[0]*qdes[0] + qdes[1]*qdes[1] + qdes[2]*qdes[2] + qdes[3]*qdes[3]);
   float qDinv[4]; // x y z w
@@ -203,22 +171,19 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
 
   // quaternion attitude error: perform qE = qA_skew * qDinv
   float qE[4];
-  for (int row = 0; row < 4; ++row) {
-    float accum = 0;
-    for (int col = 0; col < 4; ++col) {
-      accum += qA_skew[row][col] * qDinv[col];
-    }
-    qE[row] = accum;
-  }
+  qE[0] = -state->attitudeQuaternion.x*qDinv[0] - state->attitudeQuaternion.y*qDinv[1] - state->attitudeQuaternion.z*qDinv[2] + state->attitudeQuaternion.w*qDinv[3];
+  qE[1] = state->attitudeQuaternion.w*qDinv[0] + state->attitudeQuaternion.z*qDinv[1] - state->attitudeQuaternion.y*qDinv[2] + state->attitudeQuaternion.x*qDinv[3];
+  qE[2] = -state->attitudeQuaternion.z*qDinv[0] + state->attitudeQuaternion.w*qDinv[1] + state->attitudeQuaternion.x*qDinv[2] + state->attitudeQuaternion.y*qDinv[3];
+  qE[3] = state->attitudeQuaternion.y*qDinv[0] - state->attitudeQuaternion.x*qDinv[1] + state->attitudeQuaternion.w*qDinv[2] + state->attitudeQuaternion.z*qDinv[3];
 
   // just the rpy part for a vector representation
   float e_att[3];
   float dir = 1.0f;
-  if(qE[0] < 0.0f)
+  if(qE[3] < 0.0f)
     dir = -1.0f;
-  e_att[0] = dir * qE[1];
-  e_att[1] = dir * qE[2];
-  e_att[2] = dir * qE[3];
+  e_att[0] = dir * qE[0];
+  e_att[1] = dir * qE[1];
+  e_att[2] = dir * qE[2];
 
   //////////////////////////////////////////////
   // calculate rotational velocity error
@@ -258,9 +223,9 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   taud[2] += J[2][0]*omg_ddes[0] + J[2][1]*omg_ddes[1] + J[2][2]*omg_ddes[2];
 
   // Body frame force control
-  float uF = thrust_des;
   if(thrust_des < 0.0f)
     thrust_des = 0.0f;
+  float uF = thrust_des;
 
   // moment control signal
   // uM = taud - J * (Kpq * e_att + Komega * e_ang);
@@ -281,22 +246,27 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   control->yaw = clamp_local(Mbz, -32000, 32000);
 }
 
-//PARAM_GROUP_START(cascaded_cmd)
-//PARAM_ADD(PARAM_FLOAT, Ixx, &Ixx)
-//PARAM_ADD(PARAM_FLOAT, Ixy, &Ixy)
-//PARAM_ADD(PARAM_FLOAT, Ixz, &Ixz)
-//PARAM_ADD(PARAM_FLOAT, Iyy, &Iyy)
-//PARAM_ADD(PARAM_FLOAT, Iyz, &Iyz)
-//PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
-//PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
-//PARAM_ADD(PARAM_FLOAT, Kpq_x, &Kpq_x)
-//PARAM_ADD(PARAM_FLOAT, Kpq_y, &Kpq_y)
-//PARAM_ADD(PARAM_FLOAT, Kpq_z, &Kpq_z)
-//PARAM_ADD(PARAM_FLOAT, Komega_x, &Komega_x)
-//PARAM_ADD(PARAM_FLOAT, Komega_y, &Komega_y)
-//PARAM_ADD(PARAM_FLOAT, Komega_z, &Komega_z)
-//PARAM_GROUP_STOP(cascaded_cmd)
+PARAM_GROUP_START(cascaded_cmd)
+PARAM_ADD(PARAM_FLOAT, Ixx, &Ixx)
+PARAM_ADD(PARAM_FLOAT, Ixy, &Ixy)
+PARAM_ADD(PARAM_FLOAT, Ixz, &Ixz)
+PARAM_ADD(PARAM_FLOAT, Iyy, &Iyy)
+PARAM_ADD(PARAM_FLOAT, Iyz, &Iyz)
+PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
+PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
+PARAM_ADD(PARAM_FLOAT, Kpq_x, &Kpq_x)
+PARAM_ADD(PARAM_FLOAT, Kpq_y, &Kpq_y)
+PARAM_ADD(PARAM_FLOAT, Kpq_z, &Kpq_z)
+PARAM_ADD(PARAM_FLOAT, Komega_x, &Komega_x)
+PARAM_ADD(PARAM_FLOAT, Komega_y, &Komega_y)
+PARAM_ADD(PARAM_FLOAT, Komega_z, &Komega_z)
+PARAM_GROUP_STOP(cascaded_cmd)
 
 LOG_GROUP_START(cscmd_group)
 LOG_ADD(LOG_UINT8, led, &group_id)
+LOG_ADD(LOG_FLOAT, qx, &qdes[0])
+LOG_ADD(LOG_FLOAT, qy, &qdes[1])
+LOG_ADD(LOG_FLOAT, qz, &qdes[2])
+LOG_ADD(LOG_FLOAT, qw, &qdes[3])
+LOG_ADD(LOG_FLOAT, thrust, &thrust_des)
 LOG_GROUP_STOP(cscmd_group)

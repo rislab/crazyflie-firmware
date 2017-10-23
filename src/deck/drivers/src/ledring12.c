@@ -613,7 +613,7 @@ static void groupEffect(uint8_t buffer[][3], bool reset)
   static int tic = 0;
   static bool batteryEverLow = false;
 
-  group_id_var = logGetVarId("fm_group", "led");
+  group_id_var = logGetVarId("cscmd_group", "led");
   /*group_id_var = logGetVarId("setpointGroup", "led");*/
   group_id_led = logGetUint(group_id_var);
 
