@@ -45,7 +45,6 @@ static bool isInit = false;
 //static uint8_t my_id;
 static uint8_t group_id;
 
-static float J[3][3];
 static float Ixx = 0.00084f;
 static float Ixy = 0.00000f;
 static float Ixz = 0.00000f;
@@ -79,7 +78,6 @@ static float massThrust = 130500;
 // put the new controller signals on par with the
 // old controller values. Once we tune the
 // controller, these should not be necessary.
-static float Jscale = 10;
 static float Mscale_xy = 5.0f;
 static float Mscale_z = 1000.0f;
 
@@ -99,17 +97,6 @@ void CascadedCmdInit(void)
   //my_id = address & 0xFF;
 
   group_id = 0;
-
-  J[0][0] = Ixx/Jscale;
-  J[0][1] = Ixy/Jscale;
-  J[0][2] = Ixz/Jscale;
-  J[1][0] = Ixy/Jscale;
-  J[1][1] = Iyy/Jscale;
-  J[1][2] = Iyz/Jscale;
-  J[2][0] = Ixz/Jscale;
-  J[2][1] = Iyz/Jscale;
-  J[2][2] = Izz/Jscale;
-
 
   //Kpq = diag(Kpq_x, Kpq_y, Kpq_z);
   //Komega = diag(Komega_x, Komega_y, Komega_z);
@@ -190,7 +177,6 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   e_att[0] = dir * qE[0];
   e_att[1] = dir * qE[1];
   e_att[2] = dir * qE[2];
-
   //////////////////////////////////////////////
   // calculate rotational velocity error
   //////////////////////////////////////////////
@@ -222,15 +208,15 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   // velocity & desired angular acceleration
   // taud = J * omg_ddes + Somega_des * J * current_angular_velocity;
   float taud[3], term2[3];
-  term2[0] = J[0][0]*gyro[0] + J[0][1]*gyro[1] + J[0][2]*gyro[2];
-  term2[1] = J[1][0]*gyro[0] + J[1][1]*gyro[1] + J[1][2]*gyro[2];
-  term2[2] = J[2][0]*gyro[0] + J[2][1]*gyro[1] + J[2][2]*gyro[2];
+  term2[0] = Ixx*gyro[0] + Ixy*gyro[1] + Ixz*gyro[2];
+  term2[1] = Ixy*gyro[0] + Iyy*gyro[1] + Iyz*gyro[2];
+  term2[2] = Ixz*gyro[0] + Iyz*gyro[1] + Izz*gyro[2];
   taud[0] = -omg_des[2]*term2[1] + omg_des[1]*term2[2];
   taud[1] = omg_des[2]*term2[0] - omg_des[0]*term2[2];
   taud[2] = -omg_des[1]*term2[0] + omg_des[0]*term2[1];
-  taud[0] += J[0][0]*omg_ddes[0] + J[0][1]*omg_ddes[1] + J[0][2]*omg_ddes[2];
-  taud[1] += J[1][0]*omg_ddes[0] + J[1][1]*omg_ddes[1] + J[1][2]*omg_ddes[2];
-  taud[2] += J[2][0]*omg_ddes[0] + J[2][1]*omg_ddes[1] + J[2][2]*omg_ddes[2];
+  taud[0] += Ixx*omg_ddes[0] + Ixy*omg_ddes[1] + Ixz*omg_ddes[2];
+  taud[1] += Ixy*omg_ddes[0] + Iyy*omg_ddes[1] + Iyz*omg_ddes[2];
+  taud[2] += Ixz*omg_ddes[0] + Iyz*omg_ddes[1] + Izz*omg_ddes[2];
 
   // Body frame force control
   if(thrust_des < 0.0f)
@@ -240,17 +226,17 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   // moment control signal
   // uM = taud - J * (Kpq * e_att + Komega * e_ang);
   float uM[3];
-  uM[0] = taud[0] - J[0][0]*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + J[0][1]*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + J[0][2]*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
-  uM[1] = taud[1] - J[0][1]*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + J[1][1]*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + J[1][2]*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
-  uM[2] = taud[2] - J[0][2]*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + J[2][1]*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + J[2][2]*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Ixy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Ixz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  uM[1] = taud[1] - Ixy*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Iyz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  uM[2] = taud[2] - Ixz*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyz*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   //uM[0] = 0.0f;
   //uM[1] = 0.0f;
   //uM[2] = 0.0f;
 
   // scaling : make FM the same as the input to the CF_fcn
-  float Mbx = uM[0]*(massThrust*Jscale*Mscale_xy);
-  float Mby = uM[1]*(massThrust*Jscale*Mscale_xy);
-  float Mbz = uM[2]*(massThrust*Jscale*Mscale_z);
+  float Mbx = uM[0]*(massThrust*Mscale_xy);
+  float Mby = uM[1]*(massThrust*Mscale_xy);
+  float Mbz = uM[2]*(massThrust*Mscale_z);
 
   // output control signal
   control->thrust = massThrust * uF;
