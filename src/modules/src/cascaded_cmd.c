@@ -57,11 +57,17 @@ static float Izz = 0.00110f;
 static float Kpq_x = 580.0f;
 static float Kpq_y = 580.0f;
 static float Kpq_z = 175.0f;
+//static float Kpq_x = 0.0f;
+//static float Kpq_y = 0.0f;
+//static float Kpq_z = 0.0f;
 
 //static float Komega[3][3];
 static float Komega_x = 36.0f;
 static float Komega_y = 36.0f;
 static float Komega_z = 19.0f;
+//static float Komega_x = 0.0f;
+//static float Komega_y = 0.0f;
+//static float Komega_z = 0.0f;
 
 static float qdes[4]; // x y z w
 static float omg_des[3];
@@ -171,10 +177,10 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
 
   // quaternion attitude error: perform qE = qA_skew * qDinv
   float qE[4];
-  qE[0] = -state->attitudeQuaternion.x*qDinv[0] - state->attitudeQuaternion.y*qDinv[1] - state->attitudeQuaternion.z*qDinv[2] + state->attitudeQuaternion.w*qDinv[3];
-  qE[1] = state->attitudeQuaternion.w*qDinv[0] + state->attitudeQuaternion.z*qDinv[1] - state->attitudeQuaternion.y*qDinv[2] + state->attitudeQuaternion.x*qDinv[3];
-  qE[2] = -state->attitudeQuaternion.z*qDinv[0] + state->attitudeQuaternion.w*qDinv[1] + state->attitudeQuaternion.x*qDinv[2] + state->attitudeQuaternion.y*qDinv[3];
-  qE[3] = state->attitudeQuaternion.y*qDinv[0] - state->attitudeQuaternion.x*qDinv[1] + state->attitudeQuaternion.w*qDinv[2] + state->attitudeQuaternion.z*qDinv[3];
+  qE[0] = state->attitudeQuaternion.w*qDinv[0] + state->attitudeQuaternion.z*qDinv[1] - state->attitudeQuaternion.y*qDinv[2] + state->attitudeQuaternion.x*qDinv[3];
+  qE[1] = -state->attitudeQuaternion.z*qDinv[0] + state->attitudeQuaternion.w*qDinv[1] + state->attitudeQuaternion.x*qDinv[2] + state->attitudeQuaternion.y*qDinv[3];
+  qE[2] = state->attitudeQuaternion.y*qDinv[0] - state->attitudeQuaternion.x*qDinv[1] + state->attitudeQuaternion.w*qDinv[2] + state->attitudeQuaternion.z*qDinv[3];
+  qE[3] = -state->attitudeQuaternion.x*qDinv[0] - state->attitudeQuaternion.y*qDinv[1] - state->attitudeQuaternion.z*qDinv[2] + state->attitudeQuaternion.w*qDinv[3];
 
   // just the rpy part for a vector representation
   float e_att[3];
@@ -191,9 +197,13 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
 
   // calculate angular velocity error
   float e_ang[3];
-  e_ang[0] = sensors->gyro.x - omg_des[0];
-  e_ang[1] = -sensors->gyro.y - omg_des[1];
-  e_ang[2] = sensors->gyro.z - omg_des[2];
+  float gyro[3];
+  gyro[0] = sensors->gyro.x/180.0f*3.14159265f;
+  gyro[1] = sensors->gyro.y/180.0f*3.14159265f;
+  gyro[2] = sensors->gyro.z/180.0f*3.14159265f;
+  e_ang[0] = gyro[0] - omg_des[0];
+  e_ang[1] = gyro[1] - omg_des[1];
+  e_ang[2] = gyro[2] - omg_des[2];
 
   // this is the skew matrix of our desired rotational velocity
   //struct vec Srow1 = mkvec(0.0f, -omg_des.z, omg_des.y);
@@ -212,9 +222,9 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   // velocity & desired angular acceleration
   // taud = J * omg_ddes + Somega_des * J * current_angular_velocity;
   float taud[3], term2[3];
-  term2[0] = J[0][0]*sensors->gyro.x + J[0][1]*(-sensors->gyro.y) + J[0][2]*sensors->gyro.z;
-  term2[1] = J[1][0]*sensors->gyro.x + J[1][1]*(-sensors->gyro.y) + J[1][2]*sensors->gyro.z;
-  term2[2] = J[2][0]*sensors->gyro.x + J[2][1]*(-sensors->gyro.y) + J[2][2]*sensors->gyro.z;
+  term2[0] = J[0][0]*gyro[0] + J[0][1]*gyro[1] + J[0][2]*gyro[2];
+  term2[1] = J[1][0]*gyro[0] + J[1][1]*gyro[1] + J[1][2]*gyro[2];
+  term2[2] = J[2][0]*gyro[0] + J[2][1]*gyro[1] + J[2][2]*gyro[2];
   taud[0] = -omg_des[2]*term2[1] + omg_des[1]*term2[2];
   taud[1] = omg_des[2]*term2[0] - omg_des[0]*term2[2];
   taud[2] = -omg_des[1]*term2[0] + omg_des[0]*term2[1];
@@ -233,10 +243,13 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   uM[0] = taud[0] - J[0][0]*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + J[0][1]*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + J[0][2]*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   uM[1] = taud[1] - J[0][1]*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + J[1][1]*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + J[1][2]*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   uM[2] = taud[2] - J[0][2]*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + J[2][1]*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + J[2][2]*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  //uM[0] = 0.0f;
+  //uM[1] = 0.0f;
+  //uM[2] = 0.0f;
 
   // scaling : make FM the same as the input to the CF_fcn
   float Mbx = uM[0]*(massThrust*Jscale*Mscale_xy);
-  float Mby = uM[1]*(-massThrust*Jscale*Mscale_xy);
+  float Mby = uM[1]*(massThrust*Jscale*Mscale_xy);
   float Mbz = uM[2]*(massThrust*Jscale*Mscale_z);
 
   // output control signal
@@ -264,9 +277,4 @@ PARAM_GROUP_STOP(cascaded_cmd)
 
 LOG_GROUP_START(cscmd_group)
 LOG_ADD(LOG_UINT8, led, &group_id)
-LOG_ADD(LOG_FLOAT, qx, &qdes[0])
-LOG_ADD(LOG_FLOAT, qy, &qdes[1])
-LOG_ADD(LOG_FLOAT, qz, &qdes[2])
-LOG_ADD(LOG_FLOAT, qw, &qdes[3])
-LOG_ADD(LOG_FLOAT, thrust, &thrust_des)
 LOG_GROUP_STOP(cscmd_group)

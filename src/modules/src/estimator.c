@@ -6,7 +6,8 @@
 #include "estimator_complementary.h"
 #include "estimator_kalman.h"
 
-#define DEFAULT_ESTIMATOR complementaryEstimator
+//#define DEFAULT_ESTIMATOR complementaryEstimator
+#define DEFAULT_ESTIMATOR kalmanEstimator
 static StateEstimatorType currentEstimator = anyEstimator;
 static bool isInit;
 
