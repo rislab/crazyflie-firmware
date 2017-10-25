@@ -37,13 +37,10 @@
 #include "param.h"
 #include "cascaded_cmd.h"
 #include "math.h"
-//#include "math3d.h"
 
 
 // Global variables
 static bool isInit = false;
-//static uint8_t my_id;
-static uint8_t group_id;
 
 static float Ixx = 0.00084f;
 static float Ixy = 0.00000f;
@@ -52,21 +49,13 @@ static float Iyy = 0.00084f;
 static float Iyz = 0.00000f;
 static float Izz = 0.00110f;
 
-//static float Kpq[3][3];
 static float Kpq_x = 580.0f;
 static float Kpq_y = 580.0f;
 static float Kpq_z = 175.0f;
-//static float Kpq_x = 0.0f;
-//static float Kpq_y = 0.0f;
-//static float Kpq_z = 0.0f;
 
-//static float Komega[3][3];
 static float Komega_x = 36.0f;
 static float Komega_y = 36.0f;
 static float Komega_z = 19.0f;
-//static float Komega_x = 0.0f;
-//static float Komega_y = 0.0f;
-//static float Komega_z = 0.0f;
 
 static float qdes[4]; // x y z w
 static float omg_des[3];
@@ -93,14 +82,19 @@ void CascadedCmdInit(void)
   crtpInit();
   crtpRegisterPortCB(CRTP_PORT_CC, CCCrtpCB);
 
-  //uint64_t address = configblockGetRadioAddress();
-  //my_id = address & 0xFF;
-
   group_id = 0;
 
-  //Kpq = diag(Kpq_x, Kpq_y, Kpq_z);
-  //Komega = diag(Komega_x, Komega_y, Komega_z);
-
+  qdes[0] = 0.0f;
+  qdes[1] = 0.0f;
+  qdes[2] = 0.0f;
+  qdes[3] = 1.0f;
+  omg_des[0] = 0.0f;
+  omg_des[1] = 0.0f;
+  omg_des[2] = 0.0f;
+  omg_ddes[0] = 0.0f;
+  omg_ddes[1] = 0.0f;
+  omg_ddes[2] = 0.0f;
+  thrust_des = 0.0f;
 
   isInit = true;
   //DEBUG_PRINT("fm. initialized: %d\n", my_id);
@@ -129,16 +123,6 @@ static void CCCrtpCB(CRTPPacket* pk)
   omg_ddes[2] = d->omg_ddes_z/1000.0f;
   thrust_des = d->thrust_des/1000.0f;
 }
-
-/*
-   void getRPMs(float* m1, float* m2, float* m3, float* m4)
-   {
- *m1 = qdes_x;
- *m2 = qdes_y;
- *m3 = qdes_z;
- *m4 = qdes_w;
- }
- */
 
 float clamp_local(float value, float min, float max) {
   if (value < min) return min;
