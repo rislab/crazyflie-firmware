@@ -44,16 +44,17 @@ struct CCCrtpValues {
   int16_t omg_ddes_x;
   int16_t omg_ddes_y;
   int16_t omg_ddes_z;
+  int16_t heading;
   int16_t thrust_des;
 } __attribute__((packed));
 
 struct crtpCCGains {
-  int16_t Kpq_x;
-  int16_t Kpq_y;
-  int16_t Kpq_z;
-  int16_t Komega_x;
-  int16_t Komega_y;
-  int16_t Komega_z;
+  uint16_t Kpq_x;
+  uint16_t Kpq_y;
+  uint16_t Kpq_z;
+  uint16_t Komega_x;
+  uint16_t Komega_y;
+  uint16_t Komega_z;
 } __attribute__((packed));
 
 void CascadedCmdInit(void);

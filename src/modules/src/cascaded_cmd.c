@@ -64,6 +64,7 @@ static float qdes[4]; // x y z w
 static float omg_des[3];
 static float omg_ddes[3];
 static float thrust_des;
+static float vicon_yaw;
 
 static float massThrust = 130500;
 // the "scale" values are effectively gains which
@@ -101,6 +102,7 @@ void CascadedCmdInit(void)
   omg_ddes[0] = 0.0f;
   omg_ddes[1] = 0.0f;
   omg_ddes[2] = 0.0f;
+  vicon_yaw = 0.0f;
   thrust_des = 0.0f;
 
   isInit = true;
@@ -128,6 +130,7 @@ static void CCCrtpCB(CRTPPacket* pk)
   omg_ddes[0] = d->omg_ddes_x/1000.0f;
   omg_ddes[1] = d->omg_ddes_y/1000.0f;
   omg_ddes[2] = d->omg_ddes_z/1000.0f;
+  vicon_yaw = d->heading/1000.0f;
   thrust_des = d->thrust_des/1000.0f;
 }
 
@@ -139,9 +142,9 @@ static void CCGainsCB(CRTPPacket* pk)
   Kpq_y = d->Kpq_y;
   Kpq_z = d->Kpq_z;
 
-  Komega_x = d->Komega_x;
-  Komega_y = d->Komega_y;
-  Komega_z = d->Komega_z;
+  Komega_x = d->Komega_x/1000.0f;
+  Komega_y = d->Komega_y/1000.0f;
+  Komega_z = d->Komega_z/1000.0f;
 }
 
 float clamp_local(float value, float min, float max) {
@@ -166,13 +169,26 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
 	//qz = sy * cr * cp - cy * sr * sp;
 	//qw = cy * cr * cp + sy * sr * sp;
 
+  float yaw_adjust = state->attitude.yaw/180.0f*M_PI_F - vicon_yaw;
+
+  // qx and qy == 0.0f
+  float vicon_qz = sin(yaw_adjust*0.5f);
+  float vicon_qw = cos(yaw_adjust*0.5f);
+
+  // Quaternion mult given qx,qy == 0.0f
+  float adjusted_qdes[4];
+  adjusted_qdes[0] = vicon_qw*qdes[0] - vicon_qz*qdes[1];
+  adjusted_qdes[1] = vicon_qw*qdes[1] + vicon_qz*qdes[0];
+  adjusted_qdes[2] = vicon_qw*qdes[2] + vicon_qz*qdes[3];
+  adjusted_qdes[3] = vicon_qw*qdes[3] - vicon_qz*qdes[2];
+
   // calculate the inverse of our desired (quaternion) attitude
-  float qn = 1/sqrtf(qdes[0]*qdes[0] + qdes[1]*qdes[1] + qdes[2]*qdes[2] + qdes[3]*qdes[3]);
+  float qn = 1/sqrtf(adjusted_qdes[0]*adjusted_qdes[0] + adjusted_qdes[1]*adjusted_qdes[1] + adjusted_qdes[2]*adjusted_qdes[2] + adjusted_qdes[3]*adjusted_qdes[3]);
   float qDinv[4]; // x y z w
-  qDinv[0] = -qdes[0]*qn;
-  qDinv[1] = -qdes[1]*qn;
-  qDinv[2] = -qdes[2]*qn;
-  qDinv[3] = qdes[3]*qn;
+  qDinv[0] = -adjusted_qdes[0]*qn;
+  qDinv[1] = -adjusted_qdes[1]*qn;
+  qDinv[2] = -adjusted_qdes[2]*qn;
+  qDinv[3] = adjusted_qdes[3]*qn;
 
   // quaternion attitude error: perform qE = qA_skew * qDinv
   float qE[4];
@@ -278,4 +294,10 @@ LOG_ADD(LOG_UINT8, led, &group_id)
 LOG_ADD(LOG_FLOAT, moment_x, &uM[0])
 LOG_ADD(LOG_FLOAT, moment_y, &uM[1])
 LOG_ADD(LOG_FLOAT, moment_z, &uM[2])
+LOG_ADD(LOG_FLOAT, Kpq_x, &Kpq_x)
+LOG_ADD(LOG_FLOAT, Kpq_y, &Kpq_y)
+LOG_ADD(LOG_FLOAT, Kpq_z, &Kpq_z)
+LOG_ADD(LOG_FLOAT, Komega_x, &Komega_x)
+LOG_ADD(LOG_FLOAT, Komega_y, &Komega_y)
+LOG_ADD(LOG_FLOAT, Komega_z, &Komega_z)
 LOG_GROUP_STOP(cscmd_group)
