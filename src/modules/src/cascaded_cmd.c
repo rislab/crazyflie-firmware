@@ -38,6 +38,9 @@
 #include "cascaded_cmd.h"
 #include "math.h"
 
+#define M_PI_F ((float) M_PI)
+
+static uint8_t group_id;
 
 // Global variables
 static bool isInit = false;
@@ -70,8 +73,11 @@ static float massThrust = 130500;
 static float Mscale_xy = 5.0f;
 static float Mscale_z = 1000.0f;
 
+static float uM[3];
+
 //Private functions
 static void CCCrtpCB(CRTPPacket* pk);
+static void CCGainsCB(CRTPPacket* pk);
 
 void CascadedCmdInit(void)
 {
@@ -81,6 +87,7 @@ void CascadedCmdInit(void)
 
   crtpInit();
   crtpRegisterPortCB(CRTP_PORT_CC, CCCrtpCB);
+  crtpRegisterPortCB(CRTP_PORT_CCGAINS, CCGainsCB);
 
   group_id = 0;
 
@@ -124,6 +131,19 @@ static void CCCrtpCB(CRTPPacket* pk)
   thrust_des = d->thrust_des/1000.0f;
 }
 
+static void CCGainsCB(CRTPPacket* pk)
+{
+  struct crtpCCGains* d = ((struct crtpCCGains*)pk->data);
+
+  Kpq_x = d->Kpq_x;
+  Kpq_y = d->Kpq_y;
+  Kpq_z = d->Kpq_z;
+
+  Komega_x = d->Komega_x;
+  Komega_y = d->Komega_y;
+  Komega_z = d->Komega_z;
+}
+
 float clamp_local(float value, float min, float max) {
   if (value < min) return min;
   if (value > max) return max;
@@ -137,6 +157,14 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   // qError = skew(qActual) * qDesired
   // and then grab the x,y,z portion of qError
   //////////////////////////////////////////////
+
+  //float cr = cos(state->attitude.roll/180.0f*M_PI_F), sr = sin(state->attitude.roll/180.0f*M_PI_F);
+  //float cp = cos(state->attitude.pitch/180.0f*M_PI_F), sp = sin(state->attitude.pitch/180.0f*M_PI_F);
+  //float cy = cos(state->attitude.yaw/180.0f*M_PI_F), sy = sin(state->attitude.yaw/180.0f*M_PI_F);
+	//qx = cy * sr * cp - sy * cr * sp;
+	//qy = cy * cr * sp + sy * sr * cp;
+	//qz = sy * cr * cp - cy * sr * sp;
+	//qw = cy * cr * cp + sy * sr * sp;
 
   // calculate the inverse of our desired (quaternion) attitude
   float qn = 1/sqrtf(qdes[0]*qdes[0] + qdes[1]*qdes[1] + qdes[2]*qdes[2] + qdes[3]*qdes[3]);
@@ -168,9 +196,9 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   // calculate angular velocity error
   float e_ang[3];
   float gyro[3];
-  gyro[0] = sensors->gyro.x/180.0f*3.14159265f;
-  gyro[1] = sensors->gyro.y/180.0f*3.14159265f;
-  gyro[2] = sensors->gyro.z/180.0f*3.14159265f;
+  gyro[0] = sensors->gyro.x/180.0f*M_PI_F;
+  gyro[1] = sensors->gyro.y/180.0f*M_PI_F;
+  gyro[2] = sensors->gyro.z/180.0f*M_PI_F;
   e_ang[0] = gyro[0] - omg_des[0];
   e_ang[1] = gyro[1] - omg_des[1];
   e_ang[2] = gyro[2] - omg_des[2];
@@ -209,7 +237,7 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
 
   // moment control signal
   // uM = taud - J * (Kpq * e_att + Komega * e_ang);
-  float uM[3];
+  //float uM[3];
   uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Ixy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Ixz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   uM[1] = taud[1] - Ixy*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Iyz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   uM[2] = taud[2] - Ixz*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyz*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
@@ -247,4 +275,7 @@ PARAM_GROUP_STOP(cascaded_cmd)
 
 LOG_GROUP_START(cscmd_group)
 LOG_ADD(LOG_UINT8, led, &group_id)
+LOG_ADD(LOG_FLOAT, moment_x, &uM[0])
+LOG_ADD(LOG_FLOAT, moment_y, &uM[1])
+LOG_ADD(LOG_FLOAT, moment_z, &uM[2])
 LOG_GROUP_STOP(cscmd_group)

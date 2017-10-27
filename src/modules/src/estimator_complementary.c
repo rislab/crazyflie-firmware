@@ -33,6 +33,7 @@ void estimatorComplementary(state_t *state, sensorData_t *sensorData, control_t 
                        sensorData->acc.x, sensorData->acc.y, sensorData->acc.z,
                        ATTITUDE_UPDATE_DT);
     sensfusion6GetEulerRPY(&state->attitude.roll, &state->attitude.pitch, &state->attitude.yaw);
+    sensfusion6GetQuaternion(&state->attitudeQuaternion.x, &state->attitudeQuaternion.y, &state->attitudeQuaternion.z, &state->attitudeQuaternion.w);
 
     state->acc.z = sensfusion6GetAccZWithoutGravity(sensorData->acc.x,
                                                     sensorData->acc.y,

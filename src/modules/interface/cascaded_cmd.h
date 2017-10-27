@@ -47,6 +47,15 @@ struct CCCrtpValues {
   int16_t thrust_des;
 } __attribute__((packed));
 
+struct crtpCCGains {
+  int16_t Kpq_x;
+  int16_t Kpq_y;
+  int16_t Kpq_z;
+  int16_t Komega_x;
+  int16_t Komega_y;
+  int16_t Komega_z;
+} __attribute__((packed));
+
 void CascadedCmdInit(void);
 bool CascadedCmdTest(void);
 // void getRPMs(float* m1, float* m2, float* m3, float* m4);
