@@ -60,6 +60,6 @@ struct crtpCCGains {
 void CascadedCmdInit(void);
 bool CascadedCmdTest(void);
 // void getRPMs(float* m1, float* m2, float* m3, float* m4);
-void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t *state);
+void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state);
 
 #endif /* CASCADED_CMD_H_ */

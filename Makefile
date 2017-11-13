@@ -150,6 +150,7 @@ PROJ_OBJ += estimator.o estimator_complementary.o
 PROJ_OBJ += controller_$(CONTROLLER).o
 PROJ_OBJ += power_distribution_$(POWER_DISTRIBUTION).o
 PROJ_OBJ += cascaded_cmd.o
+PROJ_OBJ += l1_att_observer.o
 PROJ_OBJ_CF2 += estimator_kalman.o
 
 

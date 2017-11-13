@@ -36,6 +36,7 @@
 #include "log.h"
 #include "param.h"
 #include "cascaded_cmd.h"
+#include "l1_att_observer.h"
 #include "math.h"
 
 #define M_PI_F ((float) M_PI)
@@ -45,11 +46,12 @@ static uint8_t group_id;
 // Global variables
 static bool isInit = false;
 
+// Assume diagonal intertia matrix
 static float Ixx = 0.00084f;
-static float Ixy = 0.00000f;
-static float Ixz = 0.00000f;
+//static float Ixy = 0.00000f;
+//static float Ixz = 0.00000f;
 static float Iyy = 0.00084f;
-static float Iyz = 0.00000f;
+//static float Iyz = 0.00000f;
 static float Izz = 0.00110f;
 
 static float Kpq_x = 580.0f;
@@ -66,13 +68,16 @@ static float omg_ddes[3];
 static float thrust_des;
 static float vicon_yaw;
 
-static float massThrust = 130500;
+//static float massThrust = 130500.0f;
+static float massThrust = 1.0f;
 // the "scale" values are effectively gains which
 // put the new controller signals on par with the
 // old controller values. Once we tune the
 // controller, these should not be necessary.
-static float Mscale_xy = 5.0f;
-static float Mscale_z = 1000.0f;
+//static float Mscale_xy = 5.0f;
+//static float Mscale_z = 1000.0f;
+static float Mscale_xy = 1.0f;
+static float Mscale_z = 1.0f;
 
 static float uM[3];
 
@@ -104,6 +109,8 @@ void CascadedCmdInit(void)
   omg_ddes[2] = 0.0f;
   vicon_yaw = 0.0f;
   thrust_des = 0.0f;
+
+  L1AttObserverSetParameters(Ixx, Iyy, Izz, Mscale_xy, Mscale_z, massThrust);
 
   isInit = true;
   //DEBUG_PRINT("fm. initialized: %d\n", my_id);
@@ -153,7 +160,7 @@ float clamp_local(float value, float min, float max) {
   return value;
 }
 
-void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t *state)
+void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
 {
   //////////////////////////////////////////////
   // calculate (quaternion) attitude error as:
@@ -164,10 +171,10 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   //float cr = cos(state->attitude.roll/180.0f*M_PI_F), sr = sin(state->attitude.roll/180.0f*M_PI_F);
   //float cp = cos(state->attitude.pitch/180.0f*M_PI_F), sp = sin(state->attitude.pitch/180.0f*M_PI_F);
   //float cy = cos(state->attitude.yaw/180.0f*M_PI_F), sy = sin(state->attitude.yaw/180.0f*M_PI_F);
-	//qx = cy * sr * cp - sy * cr * sp;
-	//qy = cy * cr * sp + sy * sr * cp;
-	//qz = sy * cr * cp - cy * sr * sp;
-	//qw = cy * cr * cp + sy * sr * sp;
+  //qx = cy * sr * cp - sy * cr * sp;
+  //qy = cy * cr * sp + sy * sr * cp;
+  //qz = sy * cr * cp - cy * sr * sp;
+  //qw = cy * cr * cp + sy * sr * sp;
 
   float yaw_adjust = state->attitude.yaw/180.0f*M_PI_F - vicon_yaw;
 
@@ -236,50 +243,75 @@ void CascadedCmdControl(control_t *control, sensorData_t *sensors, const state_t
   // velocity & desired angular acceleration
   // taud = J * omg_ddes + Somega_des * J * current_angular_velocity;
   float taud[3], term2[3];
-  term2[0] = Ixx*gyro[0] + Ixy*gyro[1] + Ixz*gyro[2];
-  term2[1] = Ixy*gyro[0] + Iyy*gyro[1] + Iyz*gyro[2];
-  term2[2] = Ixz*gyro[0] + Iyz*gyro[1] + Izz*gyro[2];
+  //term2[0] = Ixx*gyro[0] + Ixy*gyro[1] + Ixz*gyro[2];
+  //term2[1] = Ixy*gyro[0] + Iyy*gyro[1] + Iyz*gyro[2];
+  //term2[2] = Ixz*gyro[0] + Iyz*gyro[1] + Izz*gyro[2];
+  term2[0] = Ixx*gyro[0];
+  term2[1] = Iyy*gyro[1];
+  term2[2] = Izz*gyro[2];
   taud[0] = -omg_des[2]*term2[1] + omg_des[1]*term2[2];
   taud[1] = omg_des[2]*term2[0] - omg_des[0]*term2[2];
   taud[2] = -omg_des[1]*term2[0] + omg_des[0]*term2[1];
-  taud[0] += Ixx*omg_ddes[0] + Ixy*omg_ddes[1] + Ixz*omg_ddes[2];
-  taud[1] += Ixy*omg_ddes[0] + Iyy*omg_ddes[1] + Iyz*omg_ddes[2];
-  taud[2] += Ixz*omg_ddes[0] + Iyz*omg_ddes[1] + Izz*omg_ddes[2];
+  //taud[0] += Ixx*omg_ddes[0] + Ixy*omg_ddes[1] + Ixz*omg_ddes[2];
+  //taud[1] += Ixy*omg_ddes[0] + Iyy*omg_ddes[1] + Iyz*omg_ddes[2];
+  //taud[2] += Ixz*omg_ddes[0] + Iyz*omg_ddes[1] + Izz*omg_ddes[2];
+  taud[0] += Ixx*omg_ddes[0];
+  taud[1] += Iyy*omg_ddes[1];
+  taud[2] += Izz*omg_ddes[2];
 
   // Body frame force control
   if(thrust_des < 0.0f)
     thrust_des = 0.0f;
-  float uF = thrust_des;
+  //float uF = thrust_des;
+  fm->thrust = thrust_des;
 
   // moment control signal
   // uM = taud - J * (Kpq * e_att + Komega * e_ang);
   //float uM[3];
-  uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Ixy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Ixz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
-  uM[1] = taud[1] - Ixy*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Iyz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
-  uM[2] = taud[2] - Ixz*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyz*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
-  //uM[0] = 0.0f;
-  //uM[1] = 0.0f;
-  //uM[2] = 0.0f;
+  //uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Ixy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Ixz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  //uM[1] = taud[1] - Ixy*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Iyz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  //uM[2] = taud[2] - Ixz*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyz*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  //uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
+  //uM[1] = taud[1] + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
+  //uM[2] = taud[2] + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  fm->moment_x = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
+  fm->moment_y = taud[1] - Ixx*(Kpq_x*e_att[1] + Komega_x*e_ang[1]);
+  fm->moment_z = taud[2] - Ixx*(Kpq_x*e_att[2] + Komega_x*e_ang[2]);
 
   // scaling : make FM the same as the input to the CF_fcn
-  float Mbx = uM[0]*(massThrust*Mscale_xy);
-  float Mby = uM[1]*(massThrust*Mscale_xy);
-  float Mbz = uM[2]*(massThrust*Mscale_z);
+  //float Mbx = uM[0]*(massThrust*Mscale_xy);
+  //float Mby = uM[1]*(massThrust*Mscale_xy);
+  //float Mbz = uM[2]*(massThrust*Mscale_z);
 
   // output control signal
-  control->thrust = massThrust * uF;
-  control->roll = clamp_local(Mbx, -32000, 32000);
-  control->pitch = clamp_local(Mby, -32000, 32000);
-  control->yaw = clamp_local(Mbz, -32000, 32000);
+  //control->thrust = massThrust * uF;
+  //control->roll = clamp_local(Mbx, -32000, 32000);
+  //control->pitch = clamp_local(Mby, -32000, 32000);
+  //control->yaw = clamp_local(Mbz, -32000, 32000);
+
+  //// L1 Adaptation
+  //L1AttObserverUpdate(control, sensors, 1.0f/RATE_MAIN_LOOP);
+  //L1AttObserverApply(uM);
+
+  //// scaling : make FM the same as the input to the CF_fcn
+  //Mbx = uM[0]*(massThrust*Mscale_xy);
+  //Mby = uM[1]*(massThrust*Mscale_xy);
+  //Mbz = uM[2]*(massThrust*Mscale_z);
+
+  //// output control signal
+  ////control->thrust = massThrust * uF;
+  //control->thrust = 0.0f;
+  //control->roll = clamp_local(Mbx, -32000, 32000);
+  //control->pitch = clamp_local(Mby, -32000, 32000);
+  //control->yaw = clamp_local(Mbz, -32000, 32000);
 }
 
 PARAM_GROUP_START(cascaded_cmd)
 PARAM_ADD(PARAM_FLOAT, Ixx, &Ixx)
-PARAM_ADD(PARAM_FLOAT, Ixy, &Ixy)
-PARAM_ADD(PARAM_FLOAT, Ixz, &Ixz)
+  //PARAM_ADD(PARAM_FLOAT, Ixy, &Ixy)
+  //PARAM_ADD(PARAM_FLOAT, Ixz, &Ixz)
 PARAM_ADD(PARAM_FLOAT, Iyy, &Iyy)
-PARAM_ADD(PARAM_FLOAT, Iyz, &Iyz)
-PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
+  //PARAM_ADD(PARAM_FLOAT, Iyz, &Iyz)
 PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
 PARAM_ADD(PARAM_FLOAT, Kpq_x, &Kpq_x)
 PARAM_ADD(PARAM_FLOAT, Kpq_y, &Kpq_y)

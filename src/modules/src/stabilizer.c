@@ -54,6 +54,7 @@ static setpoint_t setpoint;
 static sensorData_t sensorData;
 static state_t state;
 static control_t control;
+static fm_t fm;
 
 static void stabilizerTask(void* param);
 
@@ -128,6 +129,7 @@ static void stabilizerTask(void* param)
     vTaskDelayUntil(&lastWakeTime, F2T(RATE_MAIN_LOOP));
 
     //getExtPosition(&state);
+    control.thrust = fm.thrust; // Hack to keep kalman filters working, if active (which it's not usually)
     stateEstimator(&state, &sensorData, &control, tick);
 
     //commanderGetSetpoint(&setpoint, &state);
@@ -136,7 +138,7 @@ static void stabilizerTask(void* param)
 
     //stateController(&control, &setpoint, &sensorData, &state, tick);
 
-    CascadedCmdControl(&control, &sensorData, &state);
+    CascadedCmdControl(&fm, &sensorData, &state);
 
     checkEmergencyStopTimeout();
 
@@ -144,7 +146,8 @@ static void stabilizerTask(void* param)
     if (emergencyStop || control.thrust <= 0.0f || upsideDown) {
       powerStop();
     } else {
-      powerDistribution(&control);
+      //powerDistribution(&control);
+      powerDistributionFM(&fm);
     }
 
     tick++;
@@ -185,6 +188,10 @@ LOG_ADD(LOG_FLOAT, ctrl_thrust, &control.thrust)
 LOG_ADD(LOG_INT16, ctrl_roll, &control.roll)
 LOG_ADD(LOG_INT16, ctrl_pitch, &control.pitch)
 LOG_ADD(LOG_INT16, ctrl_yaw, &control.yaw)
+LOG_ADD(LOG_FLOAT, fm_thrust, &fm.thrust)
+LOG_ADD(LOG_FLOAT, fm_momentx, &fm.moment_x)
+LOG_ADD(LOG_FLOAT, fm_momenty, &fm.moment_y)
+LOG_ADD(LOG_FLOAT, fm_momentz, &fm.moment_z)
 LOG_GROUP_STOP(stabilizer)
 
 LOG_GROUP_START(acc)

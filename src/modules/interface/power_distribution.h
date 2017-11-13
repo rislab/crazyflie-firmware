@@ -31,6 +31,7 @@
 void powerDistributionInit(void);
 bool powerDistributionTest(void);
 void powerDistributionRPM(float m1, float m2, float m3, float m4);
+void powerDistributionFM(const fm_t *fm);
 void powerDistribution(const control_t *control);
 void powerStop();
 
