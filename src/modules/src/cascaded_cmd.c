@@ -54,13 +54,19 @@ static float Iyy = 0.00084f;
 //static float Iyz = 0.00000f;
 static float Izz = 0.00110f;
 
-static float Kpq_x = 580.0f;
-static float Kpq_y = 580.0f;
-static float Kpq_z = 175.0f;
+//static float Kpq_x = 580.0f;
+//static float Kpq_y = 580.0f;
+//static float Kpq_z = 175.0f;
+static float Kpq_x = 120.0f;
+static float Kpq_y = 120.0f;
+static float Kpq_z = 20.0f;
 
-static float Komega_x = 36.0f;
-static float Komega_y = 36.0f;
-static float Komega_z = 19.0f;
+//static float Komega_x = 36.0f;
+//static float Komega_y = 36.0f;
+//static float Komega_z = 19.0f;
+static float Komega_x = 17.53f;
+static float Komega_y = 17.53f;
+static float Komega_z = 7.115f;
 
 static float qdes[4]; // x y z w
 static float omg_des[3];
@@ -275,8 +281,8 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   //uM[1] = taud[1] + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
   //uM[2] = taud[2] + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   fm->moment_x = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
-  fm->moment_y = taud[1] - Ixx*(Kpq_x*e_att[1] + Komega_x*e_ang[1]);
-  fm->moment_z = taud[2] - Ixx*(Kpq_x*e_att[2] + Komega_x*e_ang[2]);
+  fm->moment_y = taud[1] - Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
+  fm->moment_z = taud[2] - Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
 
   // scaling : make FM the same as the input to the CF_fcn
   //float Mbx = uM[0]*(massThrust*Mscale_xy);
