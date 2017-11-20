@@ -57,16 +57,16 @@ static float Izz = 0.00110f;
 //static float Kpq_x = 580.0f;
 //static float Kpq_y = 580.0f;
 //static float Kpq_z = 175.0f;
-static float Kpq_x = 34.0f;
-static float Kpq_y = 34.0f;
-static float Kpq_z = 7.0f;
+static float Kpq_x = 9.0f;
+static float Kpq_y = 9.0f;
+static float Kpq_z = 8.0f;
 
 //static float Komega_x = 36.0f;
 //static float Komega_y = 36.0f;
 //static float Komega_z = 19.0f;
-static float Komega_x = 5.71433f;
-static float Komega_y = 5.71433f;
-static float Komega_z = 1.53454f;
+static float Komega_x = 1.62f;
+static float Komega_y = 1.62f;
+static float Komega_z = 1.64049f;
 
 static float qdes[4]; // x y z w
 static float omg_des[3];
