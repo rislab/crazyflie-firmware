@@ -299,7 +299,7 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
 
   fm->moment_x = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
   fm->moment_y = taud[1] - Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
-  fm->moment_z = taud[2] + 0.0f*Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  fm->moment_z = taud[2] + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   //fm->moment_x = 0.0f;
   //fm->moment_y = 0.0f;
   //fm->moment_z = 0.0f;
