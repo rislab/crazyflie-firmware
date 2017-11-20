@@ -102,28 +102,32 @@ void powerDistributionFM(const fm_t *fm)
     float m2 = 0.25f*fm->thrust - 7.6859f*fm->moment_x - 7.6859f*fm->moment_y - 147.0588f*fm->moment_z;
     float m3 = 0.25f*fm->thrust + 7.6859f*fm->moment_x - 7.6859f*fm->moment_y + 147.0588f*fm->moment_z;
     float m4 = 0.25f*fm->thrust + 7.6859f*fm->moment_x + 7.6859f*fm->moment_y - 147.0588f*fm->moment_z;
+    //float m1 = 0.25f*fm->thrust - 7.6859f*fm->moment_x + 7.6859f*fm->moment_y + 50.0588f*fm->moment_z;
+    //float m2 = 0.25f*fm->thrust - 7.6859f*fm->moment_x - 7.6859f*fm->moment_y - 50.0588f*fm->moment_z;
+    //float m3 = 0.25f*fm->thrust + 7.6859f*fm->moment_x - 7.6859f*fm->moment_y + 50.0588f*fm->moment_z;
+    //float m4 = 0.25f*fm->thrust + 7.6859f*fm->moment_x + 7.6859f*fm->moment_y - 50.0588f*fm->moment_z;
 
     // Conversion from motor forces to power commands
-    motorPower.m1 = limitThrust(9.976e5f*m1 - 1260.0f);
-    motorPower.m2 = limitThrust(9.976e5f*m2 - 1260.0f);
-    motorPower.m3 = limitThrust(9.976e5f*m3 - 1260.0f);
-    motorPower.m4 = limitThrust(9.976e5f*m4 - 1260.0f);
+    motorPower.m1 = limitThrust(3.991e6f*m1/9.81f - 1260.0f);
+    motorPower.m2 = limitThrust(3.991e6f*m2/9.81f - 1260.0f);
+    motorPower.m3 = limitThrust(3.991e6f*m3/9.81f - 1260.0f);
+    motorPower.m4 = limitThrust(3.991e6f*m4/9.81f - 1260.0f);
   }
 
-  //if (motorSetEnable)
-  //{
-  //  motorsSetRatio(MOTOR_M1, motorPowerSet.m1);
-  //  motorsSetRatio(MOTOR_M2, motorPowerSet.m2);
-  //  motorsSetRatio(MOTOR_M3, motorPowerSet.m3);
-  //  motorsSetRatio(MOTOR_M4, motorPowerSet.m4);
-  //}
-  //else
-  //{
-  //  motorsSetRatio(MOTOR_M1, motorPower.m1);
-  //  motorsSetRatio(MOTOR_M2, motorPower.m2);
-  //  motorsSetRatio(MOTOR_M3, motorPower.m3);
-  //  motorsSetRatio(MOTOR_M4, motorPower.m4);
-  //}
+  if (motorSetEnable)
+  {
+    motorsSetRatio(MOTOR_M1, motorPowerSet.m1);
+    motorsSetRatio(MOTOR_M2, motorPowerSet.m2);
+    motorsSetRatio(MOTOR_M3, motorPowerSet.m3);
+    motorsSetRatio(MOTOR_M4, motorPowerSet.m4);
+  }
+  else
+  {
+    motorsSetRatio(MOTOR_M1, motorPower.m1);
+    motorsSetRatio(MOTOR_M2, motorPower.m2);
+    motorsSetRatio(MOTOR_M3, motorPower.m3);
+    motorsSetRatio(MOTOR_M4, motorPower.m4);
+  }
 }
 
 void powerDistribution(const control_t *control)
@@ -162,17 +166,17 @@ void powerDistribution(const control_t *control)
   }
 }
 
-  PARAM_GROUP_START(motorPowerSet)
-  PARAM_ADD(PARAM_UINT8, enable, &motorSetEnable)
-  PARAM_ADD(PARAM_UINT16, m1, &motorPowerSet.m1)
-  PARAM_ADD(PARAM_UINT16, m2, &motorPowerSet.m2)
-  PARAM_ADD(PARAM_UINT16, m3, &motorPowerSet.m3)
-  PARAM_ADD(PARAM_UINT16, m4, &motorPowerSet.m4)
+PARAM_GROUP_START(motorPowerSet)
+PARAM_ADD(PARAM_UINT8, enable, &motorSetEnable)
+PARAM_ADD(PARAM_UINT16, m1, &motorPowerSet.m1)
+PARAM_ADD(PARAM_UINT16, m2, &motorPowerSet.m2)
+PARAM_ADD(PARAM_UINT16, m3, &motorPowerSet.m3)
+PARAM_ADD(PARAM_UINT16, m4, &motorPowerSet.m4)
 PARAM_GROUP_STOP(motorPowerSet)
 
-  LOG_GROUP_START(motor)
-  LOG_ADD(LOG_INT32, m1, &motorPower.m1)
-  LOG_ADD(LOG_INT32, m2, &motorPower.m2)
-  LOG_ADD(LOG_INT32, m3, &motorPower.m3)
-  LOG_ADD(LOG_INT32, m4, &motorPower.m4)
+LOG_GROUP_START(motor)
+LOG_ADD(LOG_INT32, m1, &motorPower.m1)
+LOG_ADD(LOG_INT32, m2, &motorPower.m2)
+LOG_ADD(LOG_INT32, m3, &motorPower.m3)
+LOG_ADD(LOG_INT32, m4, &motorPower.m4)
 LOG_GROUP_STOP(motor)

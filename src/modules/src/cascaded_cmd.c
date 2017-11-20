@@ -1,5 +1,4 @@
-/**
- *    ||          ____  _ __
+/** *    ||          ____  _ __
  * +------+      / __ )(_) /_______________ _____  ___
  * | 0xBC |     / __  / / __/ ___/ ___/ __ `/_  / / _ \
  * +------+    / /_/ / / /_/ /__/ /  / /_/ / / /_/  __/
@@ -37,6 +36,7 @@
 #include "param.h"
 #include "cascaded_cmd.h"
 #include "l1_att_observer.h"
+#include "median_filter.h"
 #include "math.h"
 
 #define M_PI_F ((float) M_PI)
@@ -57,16 +57,16 @@ static float Izz = 0.00110f;
 //static float Kpq_x = 580.0f;
 //static float Kpq_y = 580.0f;
 //static float Kpq_z = 175.0f;
-static float Kpq_x = 120.0f;
-static float Kpq_y = 120.0f;
-static float Kpq_z = 20.0f;
+static float Kpq_x = 34.0f;
+static float Kpq_y = 34.0f;
+static float Kpq_z = 7.0f;
 
 //static float Komega_x = 36.0f;
 //static float Komega_y = 36.0f;
 //static float Komega_z = 19.0f;
-static float Komega_x = 17.53f;
-static float Komega_y = 17.53f;
-static float Komega_z = 7.115f;
+static float Komega_x = 5.71433f;
+static float Komega_y = 5.71433f;
+static float Komega_z = 1.53454f;
 
 static float qdes[4]; // x y z w
 static float omg_des[3];
@@ -117,6 +117,7 @@ void CascadedCmdInit(void)
   thrust_des = 0.0f;
 
   L1AttObserverSetParameters(Ixx, Iyy, Izz, Mscale_xy, Mscale_z, massThrust);
+  MedianFilterInit();
 
   isInit = true;
   //DEBUG_PRINT("fm. initialized: %d\n", my_id);
@@ -182,6 +183,17 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   //qz = sy * cr * cp - cy * sr * sp;
   //qw = cy * cr * cp + sy * sr * sp;
 
+  //float gx = 2 * (qdes[1] * qdes[3] - qdes[0] * qdes[2]);
+  //float gy = 2 * (qdes[0] * qdes[1] + qdes[2] * qdes[3]);
+  //float gz = qdes[0] * qdes[0] - qdes[1] * qdes[1] - qdes[2] * qdes[2] + qdes[3] * qdes[3];
+  //float yaw_des = atan2f(2*(qdes[0]*qdes[3] + qdes[1]*qdes[2]), qdes[0]*qdes[0] + qdes[1]*qdes[1] - qdes[2]*qdes[2] - qdes[3]*qdes[3]) * 180 / M_PI_F;
+  //float pitch_des = asinf(gx) * 180 / M_PI_F; //Pitch seems to be inverted
+  //float roll_des = atan2f(gy, gz);
+
+  //e_att2[0] = state->attitude.roll/180.0f*M_PI_F - roll_des;
+  //e_att2[1] = state->attitude.pitch/180.0f*M_PI_F - pitch_des;
+  //e_att2[2] = vicon_yaw - yaw_des;
+
   float yaw_adjust = state->attitude.yaw/180.0f*M_PI_F - vicon_yaw;
 
   // qx and qy == 0.0f
@@ -215,9 +227,9 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   float dir = 1.0f;
   if(qE[3] < 0.0f)
     dir = -1.0f;
-  e_att[0] = dir * qE[0];
-  e_att[1] = dir * qE[1];
-  e_att[2] = dir * qE[2];
+  e_att[0] = 2.0f * dir * qE[0];
+  e_att[1] = -2.0f * dir * qE[1]; // pitch flip
+  e_att[2] = 2.0f * dir * qE[2];
   //////////////////////////////////////////////
   // calculate rotational velocity error
   //////////////////////////////////////////////
@@ -226,8 +238,12 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   float e_ang[3];
   float gyro[3];
   gyro[0] = sensors->gyro.x/180.0f*M_PI_F;
-  gyro[1] = sensors->gyro.y/180.0f*M_PI_F;
+  gyro[1] = -sensors->gyro.y/180.0f*M_PI_F; // pitch flip
   gyro[2] = sensors->gyro.z/180.0f*M_PI_F;
+
+  //MedianFilterUpdate(gyro[0], gyro[1], gyro[2]);
+  //MedianFilterQuery(&omega[0], &omega[1], &omega[2]);
+
   e_ang[0] = gyro[0] - omg_des[0];
   e_ang[1] = gyro[1] - omg_des[1];
   e_ang[2] = gyro[2] - omg_des[2];
@@ -280,9 +296,13 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   //uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
   //uM[1] = taud[1] + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
   //uM[2] = taud[2] + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+
   fm->moment_x = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
   fm->moment_y = taud[1] - Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
-  fm->moment_z = taud[2] - Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  fm->moment_z = taud[2] + 0.0f*Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  //fm->moment_x = 0.0f;
+  //fm->moment_y = 0.0f;
+  //fm->moment_z = 0.0f;
 
   // scaling : make FM the same as the input to the CF_fcn
   //float Mbx = uM[0]*(massThrust*Mscale_xy);
