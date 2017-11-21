@@ -293,13 +293,13 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   //uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Ixy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Ixz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   //uM[1] = taud[1] - Ixy*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Iyz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
   //uM[2] = taud[2] - Ixz*(Kpq_x*e_att[0] + Komega_x*e_ang[0]) + Iyz*(Kpq_y*e_att[1] + Komega_y*e_ang[1]) + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
-  //uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
-  //uM[1] = taud[1] + Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
-  //uM[2] = taud[2] + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  uM[0] = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
+  uM[1] = taud[1] - Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
+  uM[2] = taud[2] + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
 
-  fm->moment_x = taud[0] - Ixx*(Kpq_x*e_att[0] + Komega_x*e_ang[0]);
-  fm->moment_y = taud[1] - Iyy*(Kpq_y*e_att[1] + Komega_y*e_ang[1]);
-  fm->moment_z = taud[2] + Izz*(Kpq_z*e_att[2] + Komega_z*e_ang[2]);
+  fm->moment_x = uM[0];
+  fm->moment_y = uM[1];
+  fm->moment_z = uM[2];
   //fm->moment_x = 0.0f;
   //fm->moment_y = 0.0f;
   //fm->moment_z = 0.0f;
@@ -315,21 +315,14 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   //control->pitch = clamp_local(Mby, -32000, 32000);
   //control->yaw = clamp_local(Mbz, -32000, 32000);
 
-  //// L1 Adaptation
-  //L1AttObserverUpdate(control, sensors, 1.0f/RATE_MAIN_LOOP);
-  //L1AttObserverApply(uM);
+  // L1 Adaptation
+  L1AttObserverUpdate(fm, sensors, 1.0f/RATE_MAIN_LOOP);
+  L1AttObserverApply(uM);
 
-  //// scaling : make FM the same as the input to the CF_fcn
-  //Mbx = uM[0]*(massThrust*Mscale_xy);
-  //Mby = uM[1]*(massThrust*Mscale_xy);
-  //Mbz = uM[2]*(massThrust*Mscale_z);
-
-  //// output control signal
-  ////control->thrust = massThrust * uF;
-  //control->thrust = 0.0f;
-  //control->roll = clamp_local(Mbx, -32000, 32000);
-  //control->pitch = clamp_local(Mby, -32000, 32000);
-  //control->yaw = clamp_local(Mbz, -32000, 32000);
+  // scaling : make FM the same as the input to the CF_fcn
+  fm->moment_x = uM[0];
+  fm->moment_y = uM[1];
+  fm->moment_z = uM[2];
 }
 
 PARAM_GROUP_START(cascaded_cmd)

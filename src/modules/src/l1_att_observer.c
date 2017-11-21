@@ -1,6 +1,7 @@
 #include "l1_att_observer.h"
 #include "log.h"
 #include "param.h"
+#include "num.h"
 #include "math.h"
 
 // Global variables
@@ -10,7 +11,7 @@ static bool in_nominal_flight = false;
 
 static float mass = 0.04f;
 static float gravity = 9.81f;
-static float l1_engage_level = 0.3f;
+static float l1_engage_level = 0.1f;
 static float cmd_ttl_us = 0.3f;
 //static float observer_gain[3] = {0.0f, 0.0f, 0.0f};
 static float observer_gain[3] = {400.0f, 400.0f, 400.0f};
@@ -32,6 +33,7 @@ static float mscale_xy = 0.0;
 static float mscale_z = 0.0;
 
 #define M_PI_F ((float) M_PI)
+#define limitThrust(VAL) limitUint16(VAL)
 
 void L1AttObserverSetParameters(float Ix, float Iy, float Iz, float Mscale_xy, float Mscale_z, float massThrust)
 {
@@ -43,7 +45,7 @@ void L1AttObserverSetParameters(float Ix, float Iy, float Iz, float Mscale_xy, f
   mass_thrust = massThrust;
 }
 
-void L1AttObserverInit(control_t *control, sensorData_t *sensors)
+void L1AttObserverInit(const fm_t *fm, sensorData_t *sensors)
 {
   in_nominal_flight = false;
 
@@ -59,17 +61,20 @@ void L1AttObserverInit(control_t *control, sensorData_t *sensors)
   avlhat[1] = sensors->gyro.y/180.0f*M_PI_F;
   avlhat[2] = sensors->gyro.z/180.0f*M_PI_F;
 
-  int16_t r = control->roll / 2.0f;
-  int16_t p = control->pitch / 2.0f;
-  rpmhat[0] = control->thrust - r + p + control->yaw;
-  rpmhat[1] = control->thrust - r - p - control->yaw;
-  rpmhat[2] = control->thrust + r - p + control->yaw;
-  rpmhat[3] = control->thrust + r + p - control->yaw;
+  float m1 = 0.25f*fm->thrust - 7.6859f*fm->moment_x + 7.6859f*fm->moment_y + 147.0588f*fm->moment_z;
+  float m2 = 0.25f*fm->thrust - 7.6859f*fm->moment_x - 7.6859f*fm->moment_y - 147.0588f*fm->moment_z;
+  float m3 = 0.25f*fm->thrust + 7.6859f*fm->moment_x - 7.6859f*fm->moment_y + 147.0588f*fm->moment_z;
+  float m4 = 0.25f*fm->thrust + 7.6859f*fm->moment_x + 7.6859f*fm->moment_y - 147.0588f*fm->moment_z;
+
+  rpmhat[0] = limitThrust(3.991e6f*m1/9.81f - 1260.0f);
+  rpmhat[1] = limitThrust(3.991e6f*m2/9.81f - 1260.0f);
+  rpmhat[2] = limitThrust(3.991e6f*m3/9.81f - 1260.0f);
+  rpmhat[3] = limitThrust(3.991e6f*m4/9.81f - 1260.0f);
 
   l1_initialized = true;
 }
 
-void L1AttObserverUpdate(control_t *control, sensorData_t *sensors, float dt)
+void L1AttObserverUpdate(const fm_t *fm, sensorData_t *sensors, float dt)
 {
   if(enable_l1)
   {
@@ -79,12 +84,12 @@ void L1AttObserverUpdate(control_t *control, sensorData_t *sensors, float dt)
     rates[2] = sensors->gyro.z/180.0f*M_PI_F;
 
     if (!l1_initialized || (dt > cmd_ttl_us))
-      L1AttObserverInit(control, sensors);
+      L1AttObserverInit(fm, sensors);
 
-    if(control->thrust < l1_engage_level*mass*gravity)
+    if(fm->thrust < l1_engage_level*mass*gravity)
     {
       l1_initialized = false;
-      L1AttObserverInit(control, sensors);
+      L1AttObserverInit(fm, sensors);
       in_nominal_flight = false;
     }else{
       in_nominal_flight = true;
@@ -94,12 +99,15 @@ void L1AttObserverUpdate(control_t *control, sensorData_t *sensors, float dt)
       // From power_distribution_stock.c
       float rpm_cmd[4];
       {
-        int16_t r = control->roll / 2.0f;
-        int16_t p = control->pitch / 2.0f;
-        rpm_cmd[0] = control->thrust - r + p + control->yaw;
-        rpm_cmd[1] = control->thrust - r - p - control->yaw;
-        rpm_cmd[2] = control->thrust + r - p + control->yaw;
-        rpm_cmd[3] = control->thrust + r + p - control->yaw;
+        float m1 = 0.25f*fm->thrust - 7.6859f*fm->moment_x + 7.6859f*fm->moment_y + 147.0588f*fm->moment_z;
+        float m2 = 0.25f*fm->thrust - 7.6859f*fm->moment_x - 7.6859f*fm->moment_y - 147.0588f*fm->moment_z;
+        float m3 = 0.25f*fm->thrust + 7.6859f*fm->moment_x - 7.6859f*fm->moment_y + 147.0588f*fm->moment_z;
+        float m4 = 0.25f*fm->thrust + 7.6859f*fm->moment_x + 7.6859f*fm->moment_y - 147.0588f*fm->moment_z;
+
+        rpm_cmd[0] = limitThrust(3.991e6f*m1/9.81f - 1260.0f);
+        rpm_cmd[1] = limitThrust(3.991e6f*m2/9.81f - 1260.0f);
+        rpm_cmd[2] = limitThrust(3.991e6f*m3/9.81f - 1260.0f);
+        rpm_cmd[3] = limitThrust(3.991e6f*m4/9.81f - 1260.0f);
       }
 
       float werr[3];
@@ -109,9 +117,14 @@ void L1AttObserverUpdate(control_t *control, sensorData_t *sensors, float dt)
 
       // Mixer stuff
       float tauhat[3];
-      tauhat[0] = (-0.5f*rpmhat[0] -0.5f*rpmhat[1] + 0.5f*rpmhat[2] + 0.5f*rpmhat[3])/mass_thrust/mscale_xy;
-      tauhat[1] = (0.5f*rpmhat[0] -0.5f*rpmhat[1] - 0.5f*rpmhat[2] + 0.5f*rpmhat[3])/mass_thrust/mscale_xy;
-      tauhat[2] = (0.25f*rpmhat[0] -0.25f*rpmhat[1] + 0.25f*rpmhat[2] - 0.25f*rpmhat[3])/mass_thrust/mscale_z;
+      float motor_force[4];
+      motor_force[0] = 2.483e-7f*rpmhat[0] + 0.0003859f;
+      motor_force[1] = 2.483e-7f*rpmhat[1] + 0.0003859f;
+      motor_force[2] = 2.483e-7f*rpmhat[2] + 0.0003859f;
+      motor_force[3] = 2.483e-7f*rpmhat[3] + 0.0003859f;
+      tauhat[0] = (-0.0325f*motor_force[0] -0.0325f*motor_force[1] + 0.0325f*motor_force[2] + 0.0325f*motor_force[3]);
+      tauhat[1] = (0.0325f*motor_force[0] -0.0325f*motor_force[1] - 0.0325f*motor_force[2] + 0.0325f*motor_force[3]);
+      tauhat[2] = (0.0017f*motor_force[0] -0.0017f*motor_force[1] + 0.0017f*motor_force[2] - 0.0017f*motor_force[3]);
 
       // avlhatdot = I_inv*(tauhat + dsthat - rates x (I * rates)) - observer_gain .* werr
       float avlhatdot[3];
