@@ -86,6 +86,8 @@ static float Mscale_xy = 1.0f;
 static float Mscale_z = 1.0f;
 
 static float uM[3];
+int ticks_since_last_message = 0;
+float timeout = 1.0f;
 
 //Private functions
 static void CCCrtpCB(CRTPPacket* pk);
@@ -119,6 +121,8 @@ void CascadedCmdInit(void)
   L1AttObserverSetParameters(Ixx, Iyy, Izz, Mscale_xy, Mscale_z, massThrust);
   MedianFilterInit();
 
+  ticks_since_last_message = 0;
+
   isInit = true;
   //DEBUG_PRINT("fm. initialized: %d\n", my_id);
 }
@@ -146,6 +150,8 @@ static void CCCrtpCB(CRTPPacket* pk)
   omg_ddes[2] = d->omg_ddes_z/1000.0f;
   vicon_yaw = d->heading/1000.0f;
   thrust_des = d->thrust_des/1000.0f;
+
+  ticks_since_last_message = 0;
 }
 
 static void CCGainsCB(CRTPPacket* pk)
@@ -169,6 +175,14 @@ float clamp_local(float value, float min, float max) {
 
 void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
 {
+  // Command timeout
+  if(timeout > 0){
+    ticks_since_last_message += 1;
+    if(ticks_since_last_message > timeout*RATE_MAIN_LOOP){ // One second
+      thrust_des = 0.0f;
+    }
+  }
+
   //////////////////////////////////////////////
   // calculate (quaternion) attitude error as:
   // qError = skew(qActual) * qDesired
@@ -325,30 +339,31 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   fm->moment_z = uM[2];
 }
 
-PARAM_GROUP_START(cascaded_cmd)
+  PARAM_GROUP_START(cascaded_cmd)
 PARAM_ADD(PARAM_FLOAT, Ixx, &Ixx)
   //PARAM_ADD(PARAM_FLOAT, Ixy, &Ixy)
   //PARAM_ADD(PARAM_FLOAT, Ixz, &Ixz)
 PARAM_ADD(PARAM_FLOAT, Iyy, &Iyy)
   //PARAM_ADD(PARAM_FLOAT, Iyz, &Iyz)
-PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
-PARAM_ADD(PARAM_FLOAT, Kpq_x, &Kpq_x)
-PARAM_ADD(PARAM_FLOAT, Kpq_y, &Kpq_y)
-PARAM_ADD(PARAM_FLOAT, Kpq_z, &Kpq_z)
-PARAM_ADD(PARAM_FLOAT, Komega_x, &Komega_x)
-PARAM_ADD(PARAM_FLOAT, Komega_y, &Komega_y)
-PARAM_ADD(PARAM_FLOAT, Komega_z, &Komega_z)
+  PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
+  PARAM_ADD(PARAM_FLOAT, Kpq_x, &Kpq_x)
+  PARAM_ADD(PARAM_FLOAT, Kpq_y, &Kpq_y)
+  PARAM_ADD(PARAM_FLOAT, Kpq_z, &Kpq_z)
+  PARAM_ADD(PARAM_FLOAT, Komega_x, &Komega_x)
+  PARAM_ADD(PARAM_FLOAT, Komega_y, &Komega_y)
+  PARAM_ADD(PARAM_FLOAT, Komega_z, &Komega_z)
+  PARAM_ADD(PARAM_FLOAT, timeout, &timeout)
 PARAM_GROUP_STOP(cascaded_cmd)
 
-LOG_GROUP_START(cscmd_group)
-LOG_ADD(LOG_UINT8, led, &group_id)
-LOG_ADD(LOG_FLOAT, moment_x, &uM[0])
-LOG_ADD(LOG_FLOAT, moment_y, &uM[1])
-LOG_ADD(LOG_FLOAT, moment_z, &uM[2])
-LOG_ADD(LOG_FLOAT, Kpq_x, &Kpq_x)
-LOG_ADD(LOG_FLOAT, Kpq_y, &Kpq_y)
-LOG_ADD(LOG_FLOAT, Kpq_z, &Kpq_z)
-LOG_ADD(LOG_FLOAT, Komega_x, &Komega_x)
-LOG_ADD(LOG_FLOAT, Komega_y, &Komega_y)
-LOG_ADD(LOG_FLOAT, Komega_z, &Komega_z)
+  LOG_GROUP_START(cscmd_group)
+  LOG_ADD(LOG_UINT8, led, &group_id)
+  LOG_ADD(LOG_FLOAT, moment_x, &uM[0])
+  LOG_ADD(LOG_FLOAT, moment_y, &uM[1])
+  LOG_ADD(LOG_FLOAT, moment_z, &uM[2])
+  LOG_ADD(LOG_FLOAT, Kpq_x, &Kpq_x)
+  LOG_ADD(LOG_FLOAT, Kpq_y, &Kpq_y)
+  LOG_ADD(LOG_FLOAT, Kpq_z, &Kpq_z)
+  LOG_ADD(LOG_FLOAT, Komega_x, &Komega_x)
+  LOG_ADD(LOG_FLOAT, Komega_y, &Komega_y)
+  LOG_ADD(LOG_FLOAT, Komega_z, &Komega_z)
 LOG_GROUP_STOP(cscmd_group)
