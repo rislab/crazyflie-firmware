@@ -86,8 +86,9 @@ static float Mscale_xy = 1.0f;
 static float Mscale_z = 1.0f;
 
 static float uM[3];
-int ticks_since_last_message = 0;
-float timeout = 1.0f;
+static int ticks_since_last_message = 0;
+static float timeout = 1.0f;
+static bool attitude_enabled = true;
 
 //Private functions
 static void CCCrtpCB(CRTPPacket* pk);
@@ -337,33 +338,40 @@ void CascadedCmdControl(fm_t *fm, sensorData_t *sensors, const state_t *state)
   fm->moment_x = uM[0];
   fm->moment_y = uM[1];
   fm->moment_z = uM[2];
+
+  if(!attitude_enabled){
+    fm->moment_x = 0.0f;
+    fm->moment_y = 0.0f;
+    fm->moment_z = 0.0f;
+  }
 }
 
-  PARAM_GROUP_START(cascaded_cmd)
+PARAM_GROUP_START(cascaded_cmd)
 PARAM_ADD(PARAM_FLOAT, Ixx, &Ixx)
-  //PARAM_ADD(PARAM_FLOAT, Ixy, &Ixy)
-  //PARAM_ADD(PARAM_FLOAT, Ixz, &Ixz)
+//PARAM_ADD(PARAM_FLOAT, Ixy, &Ixy)
+//PARAM_ADD(PARAM_FLOAT, Ixz, &Ixz)
 PARAM_ADD(PARAM_FLOAT, Iyy, &Iyy)
-  //PARAM_ADD(PARAM_FLOAT, Iyz, &Iyz)
-  PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
-  PARAM_ADD(PARAM_FLOAT, Kpq_x, &Kpq_x)
-  PARAM_ADD(PARAM_FLOAT, Kpq_y, &Kpq_y)
-  PARAM_ADD(PARAM_FLOAT, Kpq_z, &Kpq_z)
-  PARAM_ADD(PARAM_FLOAT, Komega_x, &Komega_x)
-  PARAM_ADD(PARAM_FLOAT, Komega_y, &Komega_y)
-  PARAM_ADD(PARAM_FLOAT, Komega_z, &Komega_z)
-  PARAM_ADD(PARAM_FLOAT, timeout, &timeout)
+//PARAM_ADD(PARAM_FLOAT, Iyz, &Iyz)
+PARAM_ADD(PARAM_FLOAT, Izz, &Izz)
+PARAM_ADD(PARAM_FLOAT, Kpq_x, &Kpq_x)
+PARAM_ADD(PARAM_FLOAT, Kpq_y, &Kpq_y)
+PARAM_ADD(PARAM_FLOAT, Kpq_z, &Kpq_z)
+PARAM_ADD(PARAM_FLOAT, Komega_x, &Komega_x)
+PARAM_ADD(PARAM_FLOAT, Komega_y, &Komega_y)
+PARAM_ADD(PARAM_FLOAT, Komega_z, &Komega_z)
+PARAM_ADD(PARAM_FLOAT, timeout, &timeout)
+PARAM_ADD(PARAM_UINT8, att_enabled, &attitude_enabled)
 PARAM_GROUP_STOP(cascaded_cmd)
 
-  LOG_GROUP_START(cscmd_group)
-  LOG_ADD(LOG_UINT8, led, &group_id)
-  LOG_ADD(LOG_FLOAT, moment_x, &uM[0])
-  LOG_ADD(LOG_FLOAT, moment_y, &uM[1])
-  LOG_ADD(LOG_FLOAT, moment_z, &uM[2])
-  LOG_ADD(LOG_FLOAT, Kpq_x, &Kpq_x)
-  LOG_ADD(LOG_FLOAT, Kpq_y, &Kpq_y)
-  LOG_ADD(LOG_FLOAT, Kpq_z, &Kpq_z)
-  LOG_ADD(LOG_FLOAT, Komega_x, &Komega_x)
-  LOG_ADD(LOG_FLOAT, Komega_y, &Komega_y)
-  LOG_ADD(LOG_FLOAT, Komega_z, &Komega_z)
+LOG_GROUP_START(cscmd_group)
+LOG_ADD(LOG_UINT8, led, &group_id)
+LOG_ADD(LOG_FLOAT, moment_x, &uM[0])
+LOG_ADD(LOG_FLOAT, moment_y, &uM[1])
+LOG_ADD(LOG_FLOAT, moment_z, &uM[2])
+LOG_ADD(LOG_FLOAT, Kpq_x, &Kpq_x)
+LOG_ADD(LOG_FLOAT, Kpq_y, &Kpq_y)
+LOG_ADD(LOG_FLOAT, Kpq_z, &Kpq_z)
+LOG_ADD(LOG_FLOAT, Komega_x, &Komega_x)
+LOG_ADD(LOG_FLOAT, Komega_y, &Komega_y)
+LOG_ADD(LOG_FLOAT, Komega_z, &Komega_z)
 LOG_GROUP_STOP(cscmd_group)
