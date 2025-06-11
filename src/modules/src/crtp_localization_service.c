@@ -105,10 +105,12 @@ typedef struct {
   uint32_t quat; // compressed quaternion, see quatcompress.h
 } __attribute__((packed)) extPosePackedItem;
 
-// Struct for logging position information
-static positionMeasurement_t ext_pos;
-// Struct for logging pose information
-static poseMeasurement_t ext_pose;
+
+// Initialize / Set Vicon Streaming Variables
+positionMeasurement_t ext_pos = {0};
+poseMeasurement_t ext_pose = {0};
+uint16_t tickOfLastPacket = 0;
+const uint32_t VICON_TIMEOUT_MS = 100;
 
 static CRTPPacket pkRange;
 static uint8_t rangeIndex;
@@ -122,7 +124,6 @@ static float extPosStdDev = 0.01;
 static float extQuatStdDev = 4.5e-3;
 static bool isInit = false;
 static uint8_t my_id;
-static uint16_t tickOfLastPacket; // tick when last packet was received
 
 static void locSrvCrtpCB(CRTPPacket* pk);
 static void extPositionHandler(CRTPPacket* pk);

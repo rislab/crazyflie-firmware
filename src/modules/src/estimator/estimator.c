@@ -16,6 +16,8 @@
 #include "eventtrigger.h"
 #include "quatcompress.h"
 
+#include "crtp_localization_service.h"
+
 #define DEFAULT_ESTIMATOR StateEstimatorTypeComplementary
 static StateEstimatorType currentEstimator = StateEstimatorTypeAutoSelect;
 
@@ -160,8 +162,21 @@ bool stateEstimatorTest(void) {
   return estimatorFunctions[currentEstimator].test();
 }
 
+// void stateEstimator(state_t *state, const stabilizerStep_t tick) {
+//   estimatorFunctions[currentEstimator].update(state, tick);
+// }
 void stateEstimator(state_t *state, const stabilizerStep_t tick) {
-  estimatorFunctions[currentEstimator].update(state, tick);
+  // Check if ext_pose data is available
+  if (tickOfLastPacket != 0 && (xTaskGetTickCount() - tickOfLastPacket) < VICON_TIMEOUT_MS) {
+    // Use ext_pose data as the state
+    state->position.x = ext_pos.x;
+    state->position.y = ext_pos.y;
+    state->position.z = ext_pos.z;
+
+  } else {
+    // Fallback to the current estimator (optional, can be removed)
+    estimatorFunctions[currentEstimator].update(state, tick);
+  }
 }
 
 const char* stateEstimatorGetName() {

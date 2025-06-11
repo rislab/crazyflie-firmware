@@ -36,6 +36,13 @@
 /**
  * CRTP external position data struct
  */
+
+// Declare Variables for Vicon 
+extern positionMeasurement_t ext_pos;
+extern poseMeasurement_t ext_pose;
+extern uint16_t tickOfLastPacket;
+extern const uint32_t VICON_TIMEOUT_MS;
+
 struct CrtpExtPosition
 {
   float x; // in m
