@@ -20,7 +20,7 @@
 
 #define DEFAULT_ESTIMATOR StateEstimatorTypeComplementary
 static StateEstimatorType currentEstimator = StateEstimatorTypeAutoSelect;
-
+#define USE_MOTION_CAPTURE true
 
 #define MEASUREMENTS_QUEUE_SIZE (20)
 static xQueueHandle measurementsQueue;
@@ -167,7 +167,7 @@ bool stateEstimatorTest(void) {
 // }
 void stateEstimator(state_t *state, const stabilizerStep_t tick) {
   // Check if ext_pose data is available
-  if (tickOfLastPacket != 0 && (xTaskGetTickCount() - tickOfLastPacket) < VICON_TIMEOUT_MS) {
+  if (USE_MOTION_CAPTURE && tickOfLastPacket != 0 && (xTaskGetTickCount() - tickOfLastPacket) < VICON_TIMEOUT_MS) {
     // Use ext_pose data as the state
     state->position.x = ext_pos.x;
     state->position.y = ext_pos.y;
